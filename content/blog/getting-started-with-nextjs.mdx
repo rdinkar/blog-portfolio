@@ -1,0 +1,50 @@
+---
+title: "Getting Started with Next.js"
+description: "A quick guide to building your first Next.js application with the App Router."
+date: "2025-02-05"
+author: "Rahul Dinkar"
+published: true
+tags:
+  - nextjs
+  - react
+  - tutorial
+---
+
+Next.js has become one of the most popular frameworks for building React applications. With its App Router, server components, and built-in optimizations, it offers a powerful foundation for modern web development.
+
+## Why Next.js?
+
+Next.js provides several key benefits out of the box:
+
+- **Server-side rendering** - Better SEO and faster initial page loads
+- **File-based routing** - Intuitive project structure
+- **API routes** - Build full-stack applications in one codebase
+- **Image optimization** - Automatic image optimization with the Image component
+
+## Creating Your First Project
+
+To get started, run the following command in your terminal:
+
+```bash
+npx create-next-app@latest my-app
+```
+
+You'll be prompted to configure TypeScript, Tailwind CSS, and other options. For most projects, the defaults work well.
+
+## The App Router
+
+The App Router uses a file-system based router where folders define routes. A `page.tsx` file makes a route segment publicly accessible:
+
+- `app/page.tsx` - Renders at `/`
+- `app/blog/page.tsx` - Renders at `/blog`
+- `app/blog/[slug]/page.tsx` - Dynamic route at `/blog/anything`
+
+## Next Steps
+
+Once you have your project set up, explore:
+
+1. **Layouts** - Shared UI that persists across pages
+2. **Loading states** - Improve perceived performance
+3. **Metadata** - Configure SEO for each page
+
+Happy building!
