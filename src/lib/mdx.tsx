@@ -61,6 +61,19 @@ export function getAllBlogPosts(): BlogPost[] {
     );
 }
 
+export function getAdjacentPosts(slug: string): {
+  prev: BlogPost | null;
+  next: BlogPost | null;
+} {
+  const posts = getAllBlogPosts();
+  const index = posts.findIndex((p) => p.slug === slug);
+  if (index === -1) return { prev: null, next: null };
+  return {
+    prev: index > 0 ? posts[index - 1] : null,
+    next: index < posts.length - 1 ? posts[index + 1] : null,
+  };
+}
+
 const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
     <h1 className="text-3xl font-bold mt-8 mb-4 text-[#242424]">

@@ -4,9 +4,11 @@ import Link from "next/link";
 import {
   getBlogPost,
   getBlogSlugs,
+  getAdjacentPosts,
   compileBlogPost,
 } from "@/lib/mdx";
 import { ArticleContent } from "@/components/ArticleContent";
+import { BlogPostNav } from "@/components/BlogPostNav";
 import { SITE_CONFIG } from "@/lib/site";
 
 interface BlogPostPageProps {
@@ -59,6 +61,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   const { frontmatter, content, readingTime } = post;
+  const { prev, next } = getAdjacentPosts(slug);
   const compiledContent = await compileBlogPost(content!);
 
   const jsonLd = {
@@ -129,6 +132,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         )}
 
         <ArticleContent>{compiledContent}</ArticleContent>
+
+        <BlogPostNav prev={prev} next={next} />
       </div>
     </article>
   );
