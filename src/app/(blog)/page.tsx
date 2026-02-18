@@ -13,9 +13,18 @@ export default function HomePage() {
           engineering.
         </p>
 
-        <div className="space-y-12 divide-y divide-[#e5e5e5]">
-          {posts.map((post) => (
-            <ArticleCard key={post.slug} post={post} />
+        <div>
+          {posts.map((post, index) => (
+            <div
+              key={post.slug}
+              className={
+                index === 0
+                  ? "pb-12"
+                  : "border-t border-[#e5e5e5] pt-12 pb-12"
+              }
+            >
+              <ArticleCard post={post} />
+            </div>
           ))}
         </div>
 

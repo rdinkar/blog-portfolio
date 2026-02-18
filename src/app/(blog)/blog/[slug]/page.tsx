@@ -118,19 +118,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
         </header>
 
-        {frontmatter.image && (
-          <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden">
-            <Image
-              src={frontmatter.image}
-              alt={frontmatter.title}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 680px"
-            />
-          </div>
-        )}
-
         <ArticleContent>{compiledContent}</ArticleContent>
 
         <BlogPostNav prev={prev} next={next} />
