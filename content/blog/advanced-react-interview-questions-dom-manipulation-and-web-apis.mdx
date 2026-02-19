@@ -1,0 +1,150 @@
+---
+title: "Advanced React Interview Questions: DOM Manipulation and Web APIs"
+description: "Virtualization, useLayoutEffect vs useEffect, useDebounce, refs, and error boundaries."
+date: "2025-07-16"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*ttpBPxTJ2LYscciGZy-Zjw.png"
+tags:
+  - react
+  - interviews
+  - dom
+  - web-apis
+---
+
+![Advanced React Interview](https://miro.medium.com/v2/resize:fit:2000/1*ttpBPxTJ2LYscciGZy-Zjw.png)
+
+As a frontend engineer, acing a React interview requires more than just a basic understanding of the library. You need to demonstrate expertise in advanced concepts, including DOM manipulation and Web APIs. In this post, we'll dive into a curated list of challenging React interview questions that'll help you prepare for the big day.
+
+### 1. How would you optimize the rendering of a large list of items in React?
+
+When dealing with massive lists, rendering every item at once can be a performance bottleneck. One approach is to use windowing or virtualization, where only a subset of items is rendered, and the rest are loaded as the user scrolls. You can achieve this using libraries like react-window or react-virtualized.
+
+Here's an example using react-window:
+
+```javascript
+import { FixedSizeList } from "react-window";
+
+const LargeList = () => {
+  const items = Array(10000)
+    .fill(0)
+    .map((_, index) => <div key={index}>{index}</div>);
+
+  return (
+    <FixedSizeList
+      height={300}
+      width={300}
+      itemSize={50}
+      itemCount={items.length}
+    >
+      {({ index, style }) => <div style={style}>{items[index]}</div>}
+    </FixedSizeList>
+  );
+};
+```
+
+### 2. Explain the difference between useLayoutEffect and useEffect.
+
+Both useLayoutEffect and useEffect are used for handling side effects in functional components. However, they differ in their timing:
+
+- **useEffect** runs after the paint, which can lead to flickering or stuttering if not handled properly.
+- **useLayoutEffect** runs before the paint, ensuring that the effect is applied before the browser renders the updated DOM.
+
+Use useLayoutEffect when you need to manipulate the DOM directly, such as measuring the size of an element or setting focus on an input field. Use useEffect for non-DOM related side effects, like fetching data or setting timers.
+
+```javascript
+import { useLayoutEffect, useState } from "react";
+
+const Example = () => {
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const element = document.getElementById("myElement");
+    setWidth(element.offsetWidth);
+  }, []);
+
+  return <div id="myElement">Hello World!</div>;
+};
+```
+
+### 3. How would you implement a custom useDebounce hook using Web APIs?
+
+Debouncing ensures that a function is only called after a certain delay, preventing excessive calls. You can create a custom useDebounce hook using the setTimeout Web API.
+
+```javascript
+import { useState, useEffect } from "react";
+
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(timeoutId);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+```
+
+### 4. What are the implications of using document or window directly in a React component? How would you avoid this?
+
+Accessing document or window directly in a React component can lead to issues with:
+
+- **Server-side rendering (SSR):** These objects are not available on the server.
+- **Testing:** Components become harder to test in isolation.
+
+To avoid this, use refs or callback refs to access DOM nodes, or wrap your code in a check for the existence of document or window.
+
+```javascript
+import { useRef, useEffect } from "react";
+
+const Example = () => {
+  const myRef = useRef(null);
+
+  useEffect(() => {
+    if (myRef.current) {
+      console.log(myRef.current.offsetWidth);
+    }
+  }, []);
+
+  return <div ref={myRef}>Hello World!</div>;
+};
+```
+
+### 5. How would you handle errors in a React application using Web APIs?
+
+Error handling is crucial in any application. You can use Web APIs like Error and console.error to handle errors.
+
+In React, you can use error boundaries to catch and handle errors in a component tree.
+
+```javascript
+import { Component } from "react";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <h1>Something went wrong.</h1>;
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

@@ -1,0 +1,189 @@
+---
+title: "Frontend Coding Interview Questions: 7 JavaScript Challenges Companies Ask"
+description: "The JavaScript challenges that separate good developers from great ones — deep clone, debounce, throttle, flatten, Promise.all, and pub-sub."
+date: "2025-03-22"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*AOju_rqeRLUw2MPvmOZgrQ.png"
+tags:
+  - javascript
+  - interviews
+  - frontend
+  - coding
+---
+
+![Frontend Coding Interview](https://miro.medium.com/v2/resize:fit:2000/1*AOju_rqeRLUw2MPvmOZgrQ.png)
+
+Ready to ace your next frontend interview? Let's dive into the JavaScript challenges that separate good developers from great ones! These questions are commonly asked in first-round technical interviews at companies, from junior to lead engineer positions. This comprehensive guide will arm you with the most common coding questions you'll face, along with battle-tested solutions that will impress any interviewer. By mastering these patterns, you'll walk into your next interview with confidence and walk out with an offer!
+
+## 1. Deep Clone Objects and Arrays
+
+Implement a function that creates a deep copy of nested objects and arrays, handling various data types.
+
+```javascript
+function deepClone(obj) {
+  if (obj === null || typeof obj !== "object") return obj;
+
+  // Handle Date objects
+  if (obj instanceof Date) return new Date(obj);
+
+  // Handle Arrays with map for better readability
+  if (Array.isArray(obj)) {
+    return obj.map((item) => deepClone(item));
+  }
+
+  // Handle plain objects using Object.entries for better readability
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [key, deepClone(value)])
+  );
+}
+```
+
+## 2. Debounce Function
+
+Create a debounce function that limits the rate at which a function can fire, waiting for a pause in invocations.
+
+```javascript
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+```
+
+## 3. Throttle Function
+
+Implement a throttle function that ensures a function is called at most once in a specified time period.
+
+```javascript
+function throttle(func, wait) {
+  let timeout;
+  return function (...args) {
+    if (!timeout) {
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+        timeout = null;
+      }, wait);
+    }
+  };
+}
+```
+
+## 4. Array Flattening
+
+Create a function that flattens a nested array to a specified depth.
+
+```javascript
+function flattenArray(arr, depth = Infinity) {
+  return depth > 0
+    ? arr.reduce(
+        (flat, item) =>
+          flat.concat(
+            Array.isArray(item) ? flattenArray(item, depth - 1) : item
+          ),
+        []
+      )
+    : arr.slice();
+}
+```
+
+## 5. Nested Object Flattening
+
+Implement a function that flattens a nested object structure using dot notation.
+
+```javascript
+function flattenObject(obj, parentKey = "") {
+  const result = {};
+
+  for (const key in obj) {
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+    if (obj[key] && typeof obj[key] === "object" && !Array.isArray(obj[key])) {
+      Object.assign(result, flattenObject(obj[key], newKey));
+    } else {
+      result[newKey] = obj[key];
+    }
+  }
+
+  return result;
+}
+```
+
+## 6. Promise.all Implementation
+
+Create a function that mimics the behavior of Promise.all, handling multiple promises in parallel.
+
+```javascript
+function promiseAll(promises) {
+  return new Promise((resolve, reject) => {
+    if (!Array.isArray(promises)) {
+      return reject(new TypeError("Argument must be an array"));
+    }
+
+    const results = new Array(promises.length);
+    let completed = 0;
+
+    if (promises.length === 0) {
+      return resolve(results);
+    }
+
+    promises.forEach((promise, index) => {
+      Promise.resolve(promise)
+        .then((value) => {
+          results[index] = value;
+          completed++;
+          if (completed === promises.length) resolve(results);
+        })
+        .catch(reject);
+    });
+  });
+}
+```
+
+## 7. Pub-Sub Pattern
+
+Implement a publish-subscribe pattern for event-driven architectures.
+
+```javascript
+class PubSub {
+  constructor() {
+    this.subscribers = {};
+  }
+
+  subscribe(event, callback) {
+    if (!this.subscribers[event]) {
+      this.subscribers[event] = [];
+    }
+    this.subscribers[event].push(callback);
+    return () => {
+      this.subscribers[event] = this.subscribers[event].filter(
+        (cb) => cb !== callback
+      );
+    };
+  }
+
+  publish(event, data) {
+    if (!this.subscribers[event]) return;
+    this.subscribers[event].forEach((callback) => callback(data));
+  }
+}
+```
+
+## Practice Makes Perfect
+
+Before diving into your interview, it's crucial to practice these implementations hands-on. Don't just read the solutions — try coding them yourself! Set up a coding environment and:
+
+1. Implement each solution without looking at the reference
+2. Test with different inputs and edge cases
+3. Observe the outputs carefully
+4. Try to break your own code to understand its limitations
+
+This practical experience will build muscle memory and confidence for when you face these challenges in real interviews.
+
+## Wrapping Up
+
+Mastering these frontend coding patterns and their implementations will significantly improve your interview performance. Remember to focus on understanding the underlying concepts rather than memorizing solutions.
+
+Did you find this article helpful? If so, I'd really appreciate it if you could give this article a few claps 👏 and follow me for more JavaScript insights and programming tips. Let's continue learning and growing together!

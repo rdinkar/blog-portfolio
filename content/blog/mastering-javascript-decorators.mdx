@@ -1,0 +1,208 @@
+---
+title: "Mastering JavaScript Decorators"
+description: "Function and method decorators: performance monitoring, caching, retry, validation, and composable patterns."
+date: "2025-07-07"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*gSyOaFziDjMNVaADMOJX4A.png"
+tags:
+  - javascript
+  - decorators
+  - design-patterns
+---
+
+![JavaScript Decorators](https://miro.medium.com/v2/resize:fit:2000/1*gSyOaFziDjMNVaADMOJX4A.png)
+
+As a frontend engineer, you may have encountered the concept of decorators—powerful tools for extending and enhancing functions or classes without modifying their core implementation. In this post, we'll dive deep into JavaScript decorators, exploring their practical applications, advanced patterns, real-world scenarios, performance considerations, testing strategies, and best practices.
+
+### What Are Decorators?
+
+Decorators are a design pattern that allows you to wrap a function or class with additional behavior. This follows the Open/Closed Principle: open for extension, closed for modification. In JavaScript, decorators are typically implemented using higher-order functions.
+
+### Function Decorators: The Basics
+
+A function decorator is a higher-order function that takes a function as input and returns a new function with enhanced behavior.
+
+```javascript
+const withPerformanceMonitoring = (fn, name = fn.name) => {
+  return function decorated(...args) {
+    const start = performance.now();
+    const result = fn.apply(this, args);
+    const end = performance.now();
+    console.log(`${name} executed in ${(end - start).toFixed(2)}ms`);
+    return result;
+  };
+};
+
+const add = (a, b) => a + b;
+const monitoredAdd = withPerformanceMonitoring(add, "add");
+console.log(monitoredAdd(2, 3)); // Output: 5, logs execution time
+```
+
+### Real-World Scenario: Caching and Retry Decorators
+
+Decorators are especially useful for cross-cutting concerns like caching and retries.
+
+```javascript
+// Caching decorator with TTL
+const withCaching =
+  (ttl = 60000) =>
+  (fn) => {
+    const cache = new Map();
+    return function decorated(...args) {
+      const key = JSON.stringify(args);
+      const now = Date.now();
+      if (cache.has(key)) {
+        const { result, timestamp } = cache.get(key);
+        if (now - timestamp < ttl) return result;
+      }
+      const result = fn.apply(this, args);
+      cache.set(key, { result, timestamp: now });
+      return result;
+    };
+  };
+
+// Retry decorator
+const withRetry =
+  (maxAttempts = 3, delay = 1000) =>
+  (fn) => {
+    return async function decorated(...args) {
+      let lastError;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          return await fn.apply(this, args);
+        } catch (error) {
+          lastError = error;
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, delay * attempt)
+            );
+          }
+        }
+      }
+      throw lastError;
+    };
+  };
+```
+
+### Method Decorators for Classes
+
+When working with classes, decorators can be used to enhance or secure methods.
+
+```javascript
+// Validation decorator
+const validate = (schema) => (target, propertyKey, descriptor) => {
+  const originalMethod = descriptor.value;
+  descriptor.value = function (...args) {
+    const validation = schema.validate(args[0]);
+    if (validation.error) {
+      throw new Error(`Validation failed: ${validation.error.message}`);
+    }
+    return originalMethod.apply(this, args);
+  };
+  return descriptor;
+};
+
+// Authorization decorator
+const requireRole = (roles) => (target, propertyKey, descriptor) => {
+  const originalMethod = descriptor.value;
+  descriptor.value = function (...args) {
+    const user = this.getCurrentUser();
+    if (!user || !roles.includes(user.role)) {
+      throw new Error("Insufficient permissions");
+    }
+    return originalMethod.apply(this, args);
+  };
+  return descriptor;
+};
+
+class UserService {
+  @validate(userSchema)
+  @requireRole(["admin", "manager"])
+  async updateUser(userData) {
+    // Implementation
+  }
+}
+```
+
+### Advanced Decorator Patterns
+
+**1. Composable Decorators**
+
+You can compose multiple decorators to build complex behaviors.
+
+```javascript
+const composeDecorators =
+  (...decorators) =>
+  (fn) =>
+    decorators.reduce((decorated, decorator) => decorator(decorated), fn);
+
+const enhancedFunction = composeDecorators(
+  withPerformanceMonitoring,
+  withCaching(30000),
+  withRetry(3, 1000)
+)(expensiveOperation);
+```
+
+For an in-depth guide to JavaScript function composition, see [Mastering JavaScript Function Composition](/blog/mastering-javascript-function-composition).
+
+**2. Conditional Decorators**
+
+Apply decorators only under certain conditions.
+
+```javascript
+const withConditionalLogging = (condition) => (fn) => {
+  return function decorated(...args) {
+    if (condition(...args)) {
+      console.log(`Function ${fn.name} called with:`, args);
+    }
+    return fn.apply(this, args);
+  };
+};
+
+const debugFunction = withConditionalLogging(
+  () => process.env.NODE_ENV === "development"
+)(myFunction);
+```
+
+### Performance Considerations
+
+- **Avoid excessive wrapping:** Too many decorators can add overhead. Use them judiciously.
+- **Memory management:** Be careful with closures that may retain references and cause leaks.
+- **Use memoization:** For expensive operations, cache results when possible.
+
+### Testing Decorators
+
+Testing decorators is crucial to ensure reliability.
+
+```javascript
+describe("Performance Monitoring Decorator", () => {
+  it("should measure execution time", () => {
+    const mockFn = jest.fn(() => {
+      return new Promise((resolve) =>
+        setTimeout(() => resolve("done"), 100)
+      );
+    });
+    const decoratedFn = withPerformanceMonitoring(mockFn, "test");
+    return decoratedFn().then((result) => {
+      expect(result).toBe("done");
+      expect(mockFn).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+```
+
+### Best Practices and Pitfalls
+
+- **Be mindful of function arity:** Ensure the decorator passes the correct arguments.
+- **Error handling:** Decorators should handle errors gracefully and not swallow exceptions.
+- **Type safety:** Use TypeScript for safer decorator signatures.
+- **Debugging:** Use logging decorators to trace execution.
+
+### Wrapping Up
+
+In this guide, we've explored JavaScript decorators in depth, from basic function decorators to advanced patterns and real-world applications. Decorators are a powerful tool for writing clean, maintainable, and extensible code.
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.
+
+Have you used decorators in your projects? What patterns or pitfalls have you encountered? Share your experiences and questions in the comments below! 🚀

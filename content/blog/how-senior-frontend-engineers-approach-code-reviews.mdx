@@ -1,0 +1,121 @@
+---
+title: "How Senior Frontend Engineers Approach Code Reviews"
+description: "How senior frontend engineers think during code reviews and what they look for beyond just \"working code\"."
+date: "2026-02-05"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*-bq3Zh5RKWAo6fXhnmMXZw.png"
+tags:
+  - code-review
+  - frontend
+  - engineering
+  - best-practices
+---
+
+![Code Reviews](https://miro.medium.com/v2/resize:fit:2000/1*-bq3Zh5RKWAo6fXhnmMXZw.png)
+
+Code reviews are not about catching bugs. Early in my career, I thought a good code review meant finding mistakes. A missing dependency or a broken edge case or a wrong condition.
+
+Those matter. But that is not what senior engineers are optimising for.
+
+When seniors review code, they are trying to answer a different question altogether.
+
+"If this code survives for two years, will it make the team faster or slower?"
+
+Everything else flows from that.
+
+## Correctness is the baseline, not the bar
+
+Correct code is table stakes. If something is obviously wrong, it gets flagged quickly and moved on from. Seniors do not linger on that part. What they actually spend time on is what happens after correctness.
+
+- Can someone else understand this in six months?
+- Does this lock us into a pattern we will regret?
+- Is this the right abstraction or just the first one that worked?
+
+If a review comment feels philosophical, it probably is. That is intentional.
+
+## Architecture is the first silent filter
+
+Senior engineers read structure before details.
+
+They look at:
+
+- File boundaries
+- Data flow direction
+- Where state lives
+- What depends on what
+
+Before reading line by line, they are already forming a mental model. If the architecture feels off, even perfect logic will feel wrong. A common senior reaction is not "this is incorrect" but "this feels heavy for what it does". That instinct usually comes from having seen similar patterns collapse at scale.
+
+## Naming is a proxy for clarity of thought
+
+Seniors obsess over names more than most people expect. Not because naming is cosmetic, but because naming reveals understanding.
+
+If a variable is called data, the reviewer immediately asks "data of what". If a function is called handleSubmit, the follow up is "submit to where and why".
+
+Good names compress intent. Bad names leak confusion into every future diff.
+
+This is why seniors leave comments that feel nitpicky but are actually defensive programming for the team.
+
+## Ownership matters more than elegance
+
+One of the most senior signals in a review is this question:
+
+"Who owns this when something breaks?"
+
+Seniors look for:
+
+- Clear responsibility boundaries
+- Predictable extension points
+- Fewer magical side effects
+
+They prefer boring, explicit code over clever abstractions that only one person understands. Elegance is great. Ownership is better.
+
+## Future proofing without over engineering
+
+This is where experience really shows. Mid level engineers often future proof by adding layers. Seniors future proof by removing assumptions.
+
+They ask:
+
+- What is most likely to change?
+- What is extremely unlikely to change?
+- Are we abstracting the stable part or the volatile one?
+
+They resist building generic solutions until pain is proven. Not because they lack vision, but because they respect entropy.
+
+## How reviews change as teams scale
+
+On small teams, reviews are about code quality. On large teams, reviews are about system health. Seniors adapt their feedback accordingly. As teams grow, reviews focus more on:
+
+- Consistency across the codebase
+- Guardrails for new contributors
+- Patterns that reduce cognitive load
+
+A change that is fine in isolation might be rejected because it introduces a new mental model the team now has to learn. That tradeoff is rarely obvious to less experienced engineers.
+
+## Common mistakes mid level engineers make
+
+These show up again and again in reviews.
+
+- **Optimising for cleverness instead of clarity:** Code that saves lines but costs comprehension usually gets rewritten.
+- **Treating feedback as a verdict:** Senior engineers expect discussion. Pushing back respectfully is good. Defending everything is not.
+- **Solving the immediate problem only:** Reviews often ask "what happens next" not "does this work now".
+- **Over abstracting too early:** Abstractions without usage pressure almost always leak. Seniors have scars from maintaining them.
+
+## The real purpose of code reviews
+
+At senior levels, code reviews are less about the code and more about the team. They are a tool to:
+
+- Transfer context
+- Align mental models
+- Prevent silent divergence
+
+When a senior leaves a long comment, it is rarely about winning an argument. It is about preventing future confusion at scale.
+
+## A good closing mental model
+
+"Senior engineers use code reviews to reduce future decision cost, not just to improve today's diff."
+
+That sentence captures the shift in mindset. And it usually signals that you have been on the receiving end of real production pain. Which is exactly what senior engineering culture is built on.
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

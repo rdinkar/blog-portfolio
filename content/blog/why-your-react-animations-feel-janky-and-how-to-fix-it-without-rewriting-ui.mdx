@@ -1,0 +1,207 @@
+---
+title: "Why Your React Animations Feel Janky (and How to Fix It Without Rewriting UI)"
+description: "A simple mental model for identifying and fixing animation jank — FLIP, requestAnimationFrame, and layout effects."
+date: "2025-12-04"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*2Cu7fnmLF0JnoC8XbJHD8Q.png"
+tags:
+  - react
+  - animations
+  - performance
+  - frontend
+---
+
+![React Animations](https://miro.medium.com/v2/resize:fit:2000/1*2Cu7fnmLF0JnoC8XbJHD8Q.png)
+
+A smooth animation makes an interface feel alive. A janky one makes it feel broken, even if everything else works perfectly. React developers often blame React itself, but most animation problems have nothing to do with the framework. They come from how work is scheduled, how layout is triggered and how components update at the wrong time.
+
+This post gives you a simple mental model for identifying and fixing jank without rewriting your UI or switching to a different framework.
+
+## Why animations stutter
+
+Animations stutter when the browser cannot produce a frame within sixteen milliseconds. Anything slower and your animation feels like it is hitching or skipping.
+
+In React apps, the biggest culprits are surprisingly mundane.
+
+### 1. Layout thrash
+
+This happens when you read layout during the same tick you are writing layout. The browser is forced to flush style and layout early, which blocks the main thread.
+
+Example:
+
+```javascript
+div.style.width = newWidth;
+const rect = div.getBoundingClientRect(); // triggers forced layout
+```
+
+If this happens repeatedly during an animation loop, your frames struggle.
+
+### 2. Forced sync during state updates
+
+A big re-render in the middle of an animation is like a speed bump. The browser cannot paint the next frame until React finishes reconciling components and updating the DOM.
+
+For instance, animating a drawer while simultaneously updating global filters or recalculating a large table will break smoothness.
+
+### 3. Heavy components in the animation tree
+
+If the component being animated contains slow children (like a sortable table or a complex chart), they get pulled into the render path even if they visually remain still.
+
+### 4. State updates landing during animation
+
+Imagine you are sliding open a modal while an auto-refresh kicks in from a data polling hook. React now has to juggle two unrelated updates within the same frame budget.
+
+**Mental model:** Animations demand a strict diet. Anything extra in the frame is a tax. Too much tax and the animation collapses.
+
+## The FLIP technique: your new secret weapon
+
+FLIP stands for First, Last, Invert, Play. It is a pattern to animate layout changes without fighting the browser.
+
+Let's say you expand a row in a data explorer, and the row below jumps downward. Instead of animating the height of the expanding row directly, FLIP animates the visual difference between states.
+
+Text diagram:
+
+```
+FIRST:  measure the element before expansion
+LAST:   measure after expansion
+INVERT: compute the delta (position, size)
+PLAY:   apply transform from inverted position to normal
+```
+
+Example:
+
+```javascript
+const first = ref.current.getBoundingClientRect();
+setExpanded(true);
+
+requestAnimationFrame(() => {
+  const last = ref.current.getBoundingClientRect();
+  const invertY = first.top - last.top;
+  ref.current.style.transform = `translateY(${invertY}px)`;
+  ref.current.style.transition = "transform 200ms ease";
+  requestAnimationFrame(() => {
+    ref.current.style.transform = "translateY(0)";
+  });
+});
+```
+
+Why it works: Using transforms is cheap. Changing layout is expensive. FLIP lets you animate with transforms while letting layout settle instantly.
+
+## Using requestAnimationFrame without shooting yourself in the foot
+
+requestAnimationFrame is the only reliable place to do per-frame work. It gives you a callback right before paint.
+
+The mistake many developers make is doing too much inside it.
+
+**Bad mental model:** "rAF is for animations so everything goes inside rAF."  
+**Better mental model:** "Use rAF to schedule the moment of an animation, not the entire animation logic."
+
+Example: animating a drawer
+
+```javascript
+function openDrawer() {
+  setOpen(true); // triggers layout
+  requestAnimationFrame(() => {
+    drawerRef.current.style.transform = "translateX(0)";
+  });
+}
+```
+
+All the heavy work (mounting drawer, layout, style recalculation) happens before requestAnimationFrame. The animation step is clean.
+
+## Layout effect vs effect: choosing the right tool
+
+useLayoutEffect runs after DOM mutation but before paint.  
+useEffect runs after paint.
+
+When your animation requires precise measurement:
+
+- Use useLayoutEffect to read size or position
+- Use useEffect to kick off non-blocking work
+
+Example: measuring for expansion
+
+```javascript
+useLayoutEffect(() => {
+  const rect = ref.current.getBoundingClientRect();
+  setHeight(rect.height);
+}, []);
+```
+
+If you measure in useEffect, the browser paints first, causing visible jumps.
+
+**Mental model:** Measure in layout effect. Animate in rAF. Leave everything else in effect.
+
+## When to use CSS transitions, browser APIs or animation libraries
+
+Not every animation belongs in JS.
+
+### Use CSS transitions for:
+
+- Simple transitions: opacity, scale, translate
+- Modals, drawers, accordions
+- Animations triggered by state toggles
+
+CSS transitions let the browser optimize the pipeline and skip JS work entirely.
+
+### Use browser APIs like Web Animations for:
+
+- Keyframe-heavy animations
+- Choreographies that need precise control
+- High-frequency updates without React involvement
+
+Example:
+
+```javascript
+ref.current.animate(
+  [{ transform: "scale(0.9)" }, { transform: "scale(1)" }],
+  { duration: 150, easing: "ease-out" }
+);
+```
+
+### Use animation libraries for:
+
+- Physics-based motion (framer motion)
+- Timeline choreography (GSAP)
+- Mount/unmount management
+
+**Good rule:** If the animation is structural, CSS. If the animation is narrative or choreographed, a library. If the animation is per-frame dynamic, browser APIs.
+
+## Real examples you've definitely seen
+
+### Janky modal
+
+You toggle isModalOpen, React re-renders half the app because global state lives in one giant context. During that re-render, your modal tries to animate. It hitches.
+
+**Fix:** move modal state to a local store or a small selector; start animation in rAF.
+
+### Laggy drawer
+
+The drawer contains a huge filter panel. During animation, the filter panel re-renders on every animation tick due to props being recreated.
+
+**Fix:** memoize the filter panel and use transforms for the drawer shell only.
+
+### Expanding row "jump"
+
+You measure in useEffect, so the expansion height is applied after paint. The row jumps.
+
+**Fix:** measure in layout effect and animate using FLIP.
+
+**Mental model:** Keep the animated surface small, isolate it from the heavy stuff, and let transforms do the visual work.
+
+## Wrapping Up
+
+A simple framework you can apply today:
+
+1. Identify animation surfaces. They must be lightweight.
+2. Measure layout only in layout effects.
+3. Kick animations using requestAnimationFrame.
+4. Animate position and shape with transforms, not layout properties.
+5. Prevent unrelated re-renders from firing during animation.
+6. Use CSS transitions for simple state-driven motion.
+7. Apply FLIP when elements move or resize.
+8. Keep effects that cause data updates away from animation moments.
+
+Follow this, and your UI will go from "why does this feel slow" to "this feels like a native app" without rewriting a single component.
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

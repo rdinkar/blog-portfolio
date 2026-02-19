@@ -1,0 +1,156 @@
+---
+title: "How Senior Frontend Engineers Actually Use AI at Work"
+description: "AI as leverage, not magic — where it saves time and where it fails, from a senior frontend engineer's day-to-day."
+date: "2026-02-12"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*iXjmVRTk3KJsZ4lumzkYYQ.png"
+tags:
+  - ai
+  - frontend
+  - engineering
+  - productivity
+---
+
+![How Senior Frontend Engineers Use AI](https://miro.medium.com/v2/resize:fit:2000/1*iXjmVRTk3KJsZ4lumzkYYQ.png)
+
+AI is neither the future of engineering nor a toy you ignore to feel superior. It is closer to a very fast junior engineer who never gets tired, sometimes hallucinates confidently, and has zero understanding of why your system exists.
+
+If you treat it like magic, it will quietly lower your bar. If you treat it like leverage, it will give you time back.
+
+This is not a hype piece. This is how AI shows up in my day to day work as a senior frontend engineer.
+
+## Where AI genuinely saves time
+
+There are three areas where AI earns its keep without drama.
+
+### 1. Boilerplate that I already understand
+
+If I know exactly what I want, AI is great at typing it faster than I ever will.
+
+Things like:
+
+- Wiring a new React hook with sensible defaults
+- Creating a basic Zustand or Redux slice
+- Writing repetitive form validation schemas
+- Spinning up a table component with props, types, and placeholder handlers
+
+I already know the shape. I already know the edge cases. I just do not want to type.
+
+This is important. The moment you ask AI to invent the shape, you are already in trouble. AI is useful when the thinking is done and the typing is the bottleneck.
+
+### 2. Mechanical refactors
+
+This is where AI quietly saves hours.
+
+Examples from real work:
+
+- Renaming a prop across 15 components
+- Converting class components to function components
+- Splitting a large component into smaller ones without changing behaviour
+- Migrating deprecated lifecycle logic to hooks
+
+I still review every diff. I still run the app. But the grunt work is gone.
+
+The key is that the refactor must be mechanical, not conceptual. If the refactor involves deciding ownership, data flow, or responsibilities, AI will happily make the wrong call and look confident doing it.
+
+### 3. Test scaffolding
+
+AI is surprisingly decent at tests, as long as you treat them as scaffolding, not truth.
+
+- Generate basic Jest or Vitest test files
+- Mock obvious dependencies
+- Cover happy paths so I can focus on edge cases
+
+Do not trust it with:
+
+- Async edge cases
+- Timing related behaviour
+- Performance sensitive logic
+
+AI writes tests the way juniors do. Lots of green checks, shallow confidence. Seniors still need to add the tests that actually fail when something breaks.
+
+## Where AI fails badly
+
+These failures are consistent. If you have been burned once, you start spotting them early.
+
+### 1. Architecture and boundaries
+
+AI does not understand why a boundary exists.
+
+It will happily:
+
+- Move state closer because it feels convenient
+- Pass props deeper instead of questioning ownership
+- Introduce new abstractions because they look clean in isolation
+
+But frontend architecture is about tradeoffs, not cleanliness.
+
+Why is this state global? Why is this logic duplicated on purpose? Why does this component look slightly awkward?
+
+Those answers live in context, history, and constraints. AI has none of that.
+
+### 2. Performance reasoning
+
+This one is dangerous because the code often looks reasonable.
+
+AI suggestions around performance usually include:
+
+- Memoizing everything
+- Adding useCallback everywhere
+- Splitting components prematurely
+- Suggesting virtualisation without measuring
+
+It optimises shapes, not behaviour. Real performance work comes from understanding:
+
+- Render frequency
+- State update paths
+- Browser behaviour
+- User interaction patterns
+
+AI does not run your app in its head. Seniors do.
+
+### 3. Async bugs and concurrency
+
+Frontend async bugs are subtle because timing matters more than logic. Things AI gets wrong often:
+
+- Stale closures in hooks
+- Race conditions between effects
+- Incorrect dependency arrays
+- Promise handling inside event handlers
+
+AI can write async code. It cannot reason about when things happen relative to each other. If you have ever debugged a production issue caused by a missing dependency in useEffect, you already know why this matters.
+
+## What this feels like in practice
+
+Using AI well feels less like chatting and more like reviewing a pull request you asked for. You do not trust it by default. You do not assume correctness. You skim for smells. You test aggressively.
+
+Ironically, this is why seniors benefit more from AI than juniors.
+
+If you do not know what good looks like, speed just gets you to bad faster.
+
+## The mental model that actually works
+
+Here is the model I share during code reviews. AI is leverage on clarity, not a replacement for it.
+
+- If the problem is unclear, AI will amplify confusion
+- If the architecture is weak, AI will polish the wrong thing
+- If the tradeoffs are unknown, AI will pick the loudest one
+
+But when you already know what needs to be built, AI removes friction.
+
+Think of AI as:
+
+- A typing accelerator
+- A refactoring assistant
+- A test skeleton generator
+
+Not as:
+
+- A system designer
+- A performance engineer
+- A debugger for race conditions
+
+Used this way, AI does not make you lazier. It gives you more time to do the work that actually requires experience. And that, quietly, is where senior engineers still earn their keep.
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

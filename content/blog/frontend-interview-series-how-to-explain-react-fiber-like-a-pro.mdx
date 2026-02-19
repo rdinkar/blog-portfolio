@@ -1,0 +1,128 @@
+---
+title: "Frontend Interview Series: How to Explain React Fiber Like a Pro"
+description: "Crack frontend interviews with a deep dive into React Fiber, how React renders, prioritizes updates, and keeps UIs fast."
+date: "2025-10-23"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*VRXsVxrZui1FBcYiTCrmtg.png"
+tags:
+  - react
+  - fiber
+  - frontend
+  - interviews
+---
+
+![React Fiber](https://miro.medium.com/v2/resize:fit:2000/1*VRXsVxrZui1FBcYiTCrmtg.png)
+
+Ever been asked in an interview _"What is React Fiber?"_ and felt your brain freeze for a second?
+
+You're not alone.
+
+"React Fiber" sounds like a mysterious internal detail, but it's actually one of the **most important concepts** behind how React works today.
+
+If you can explain it clearly, not just recite definitions, you'll instantly sound like a **pro-level frontend engineer**.
+
+Let's break it down the way React itself would: step by step, in small, digestible chunks.
+
+## What is React Fiber?
+
+At its core, **React Fiber** is the **reimplementation of React's reconciliation algorithm,** the part that figures out _what to render and when_.
+
+Before Fiber (in React 15 and earlier), React rendered updates **synchronously,** meaning once rendering started, it couldn't be paused or interrupted until it finished.
+
+That worked fine for small UIs but not for large, interactive apps.
+
+React Fiber (introduced in React 16) changed that. It brought in a **new architecture** that made rendering:
+
+- **Interruptible**
+- **Prioritized**
+- **Incremental**
+
+This gave React the power to pause, resume, and even abandon work, all while keeping the UI responsive.
+
+## Fiber = A Data Structure, Not Magic
+
+Let's get concrete.
+
+Each element in your React tree (like a component, DOM node, or fragment) is represented internally by a **Fiber node**.
+
+A Fiber is just a **plain JavaScript object** with references like:
+
+```javascript
+fiber = {
+  type,           // Function, Class, or Host component
+  stateNode,      // DOM node or class instance
+  child, sibling, return, // Tree navigation
+  pendingProps, memoizedProps,
+  pendingWorkPriority,
+  alternate        // Link to the previous fiber (for diffing)
+}
+```
+
+Think of Fiber nodes as **units of work**. React walks through these fibers to compute updates and can pause between them if something more important (like user input) comes up.
+
+## Why Fiber Matters in Rendering
+
+When React updates, it does two phases:
+
+1. **Render Phase** → Build a new fiber tree (can be paused)
+2. **Commit Phase** → Apply changes to the DOM (cannot be paused)
+
+Fiber allows React to **schedule work** intelligently in the render phase.
+
+Imagine you're typing into an input field while a heavy list re-renders, React can _pause_ the list update and _prioritize_ your input.
+
+That's the power of Fiber.
+
+## Example: Scheduling Work with Fiber
+
+Let's simulate React's "work scheduling" concept with a small example.
+
+```javascript
+function workLoop(deadline) {
+  while (deadline.timeRemaining() > 0 && nextUnitOfWork) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+  }
+  requestIdleCallback(workLoop);
+}
+```
+
+This is simplified, but it's the **heart of Fiber's design,** breaking rendering into small "units of work" and performing them **during browser idle time**.
+
+That's why React feels smooth even under heavy loads, rendering becomes **asynchronous and cooperative**.
+
+## How to Explain in an Interview
+
+If asked _"What is React Fiber?"_, you can respond like this:
+
+> _React Fiber is the new reconciliation engine introduced in React 16. It breaks rendering into small units of work (Fibers) so React can pause, resume, and prioritize updates. This allows for smooth, non-blocking UIs and enables features like concurrent rendering and Suspense._
+
+Then add:
+
+> _Each Fiber node represents a React element in the tree and keeps references to its parent, child, and sibling. React uses this linked structure to efficiently diff and reconcile UI updates._
+
+You've just nailed a **deep answer with clarity,** which is exactly what interviewers love.
+
+## Beyond the Basics: Concurrency
+
+React Fiber set the stage for **Concurrent Rendering,** introduced with React 18.
+
+Features like:
+
+- `useTransition()`
+- `Suspense`
+- `startTransition()`
+
+…all rely on Fiber's ability to **pause low-priority work** and **resume later**.
+
+So if you understand Fiber, you understand **why concurrent React even exists**.
+
+## Wrapping Up
+
+React Fiber isn't just a buzzword, it's the foundation of modern React's smoothness and concurrency.
+
+Once you understand it, you'll be able to reason about **performance, rendering, and reactivity** at a level most developers don't reach.
+
+So next time an interviewer asks _"What's React Fiber?"_. You won't just explain it. You'll teach it.
+
+If you found this article helpful, I'd really appreciate your support. Give it a clap and follow me on [Medium](https://medium.com/@rahul.dinkar) for more in-depth articles about React, frontend development, and software engineering best practices.

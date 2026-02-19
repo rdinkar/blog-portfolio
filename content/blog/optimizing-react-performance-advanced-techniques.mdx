@@ -1,0 +1,113 @@
+---
+title: "Optimizing React Performance: Advanced Techniques"
+description: "State localization, component-as-prop, isolating heavy work, splitting context, and visibility-based rendering."
+date: "2025-01-12"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*Y3mjUuF4TZ4sIc4O5tTghQ.png"
+tags:
+  - react
+  - performance
+  - optimization
+---
+
+![Advanced React Performance](https://miro.medium.com/v2/resize:fit:2000/1*Y3mjUuF4TZ4sIc4O5tTghQ.png)
+
+Beyond the basics, these patterns help with harder performance issues in React.
+
+## 1. State localization
+
+Global state (e.g. one big context) can trigger rerenders in many unrelated components. Keep state in the smallest component that needs it and pass only what children need via props.
+
+```javascript
+// Prefer local state where it’s used
+function SearchBar() {
+  const [searchQuery, setSearchQuery] = useState("");
+  return (
+    <input
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+    />
+  );
+}
+```
+
+**Benefits:** Fewer unnecessary rerenders, clearer data flow, easier testing.
+
+## 2. Component-as-prop pattern
+
+Passing a component (or render function) as a prop can isolate heavy UI and give the parent control over when it’s created and what data it receives.
+
+```javascript
+function Chart({ render }) {
+  return <div className="chart-container">{render()}</div>;
+}
+
+function App() {
+  const RenderBarChart = useCallback(() => <BarChart data={data} />, [data]);
+  return <Chart render={RenderBarChart} />;
+}
+```
+
+**Benefits:** Keeps the parent light, defers or scopes rendering of heavy children.
+
+## 3. Isolating heavy computation
+
+Keep expensive work out of components that rerender often. Put it in a dedicated component and cache with `useMemo` so it only runs when inputs change.
+
+```javascript
+function ExpensiveComponent({ data }) {
+  const computedData = useMemo(() => {
+    return data.map((item) => performHeavyComputation(item));
+  }, [data]);
+
+  return <div>{computedData}</div>;
+}
+```
+
+**Benefits:** Main UI stays responsive; redundant work is avoided.
+
+## 4. Selective context updates
+
+One giant context means any change can rerender every consumer. Split by domain (e.g. theme, auth) so only components that use a given slice subscribe to it.
+
+```javascript
+const ThemeContext = React.createContext();
+const AuthContext = React.createContext();
+
+function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState("light");
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+```
+
+**Benefits:** Fewer rerenders, clearer dependencies, easier debugging.
+
+## 5. Dynamic rendering based on visibility
+
+Don’t render heavy content until it’s in (or near) the viewport. Use `react-intersection-observer` or a similar approach to mount when visible.
+
+```javascript
+import { useInView } from "react-intersection-observer";
+
+function LazyComponent() {
+  const { ref, inView } = useInView({ threshold: 0.1 });
+  return (
+    <div ref={ref}>
+      {inView ? <HeavyComponent /> : <Placeholder />}
+    </div>
+  );
+}
+```
+
+**Benefits:** Faster initial load, lower memory use, better perceived performance.
+
+## Final thoughts
+
+Use these when profiling shows a real bottleneck: localize state, isolate heavy work, split context, and defer rendering until needed. That will improve both performance and maintainability.
+
+If you found these tips helpful, share how you’ve used them and subscribe for more frontend deep dives.

@@ -1,0 +1,198 @@
+---
+title: "Building Custom React Hooks: A Practical Guide with Real-World Examples"
+description: "useLocalStorage, useDebounce, useIntersectionObserver, best practices, and testing."
+date: "2025-01-07"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*qJlNulkexGuaCW1NbLVHTg.png"
+tags:
+  - react
+  - hooks
+  - custom-hooks
+---
+
+![Custom React Hooks](https://miro.medium.com/v2/resize:fit:2000/1*qJlNulkexGuaCW1NbLVHTg.png)
+
+Custom hooks let you move component logic into reusable functions. They must be named with a leading `use` and can call other hooks. Here are three practical examples and some guidelines.
+
+## What are custom hooks?
+
+Custom hooks are JavaScript functions whose names start with `use` and that can call other hooks. They help you reuse stateful and effectful logic across components without duplication.
+
+## 1. useLocalStorage
+
+Persist state in `localStorage` and keep it in sync with React state.
+
+```javascript
+import { useState, useEffect } from "react";
+
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(storedValue));
+    } catch (error) {
+      console.error(error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setStoredValue];
+}
+
+// Usage
+function UserPreferences() {
+  const [theme, setTheme] = useLocalStorage("theme", "light");
+  return (
+    <button
+      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+    >
+      Toggle Theme: {theme}
+    </button>
+  );
+}
+```
+
+## 2. useDebounce
+
+Delay updating a value until the source has been stable for a given time—useful for search inputs and API calls.
+
+```javascript
+import { useState, useEffect } from "react";
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Usage
+function SearchComponent() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  useEffect(() => {
+    console.log("Searching for:", debouncedSearchTerm);
+  }, [debouncedSearchTerm]);
+
+  return (
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+## 3. useIntersectionObserver
+
+Know when an element enters (or leaves) the viewport—handy for infinite scroll or lazy loading.
+
+```javascript
+import { useState, useEffect, useRef } from "react";
+
+function useIntersectionObserver(ref, options = {}) {
+  const [isIntersecting, setIsIntersecting] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsIntersecting(entry.isIntersecting);
+    }, options);
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [ref, options]);
+
+  return isIntersecting;
+}
+
+// Usage
+function InfiniteList() {
+  const bottomRef = useRef(null);
+  const isVisible = useIntersectionObserver(bottomRef);
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    if (isVisible) {
+      setItems((prev) => [...prev, `Item ${prev.length + 1}`]);
+    }
+  }, [isVisible]);
+
+  return (
+    <div>
+      {items.map((item, index) => (
+        <div key={index}>{item}</div>
+      ))}
+      <div ref={bottomRef}>Loading more...</div>
+    </div>
+  );
+}
+```
+
+## Best practices
+
+- **Naming:** Start hook names with `use` so React (and lint rules) treat them as hooks.
+- **Single responsibility:** One clear purpose per hook.
+- **TypeScript:** Add types so hooks are easier to use and refactor.
+- **Cleanup:** In `useEffect`, return a cleanup function for subscriptions, timers, and observers to avoid leaks.
+
+## Common pitfalls
+
+- **Infinite loops:** Double-check dependency arrays in `useEffect`.
+- **Memory leaks:** Always clear timeouts and disconnect observers in cleanup.
+- **Extra rerenders:** Keep dependencies minimal; use memoization when it helps.
+
+## Testing custom hooks
+
+Use `@testing-library/react`’s `renderHook` and `act` to drive and assert hook behavior:
+
+```javascript
+import { renderHook, act } from "@testing-library/react";
+
+describe("useLocalStorage", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("should store and retrieve values", () => {
+    const { result } = renderHook(() => useLocalStorage("testKey", "initial"));
+
+    expect(result.current[0]).toBe("initial");
+
+    act(() => {
+      result.current[1]("updated");
+    });
+
+    expect(result.current[0]).toBe("updated");
+    expect(window.localStorage.getItem("testKey")).toBe('"updated"');
+  });
+});
+```
+
+## Conclusion
+
+Custom hooks keep logic reusable, testable, and easier to maintain. Name them with `use`, keep them focused, type them when possible, clean up side effects, and test them. `useLocalStorage`, `useDebounce`, and `useIntersectionObserver` are a good starting set; you’ll find more opportunities as your app grows.
+
+What custom hooks have you built? Share in the comments.

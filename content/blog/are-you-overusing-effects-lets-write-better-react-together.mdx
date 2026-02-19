@@ -1,0 +1,102 @@
+---
+title: "Are You Overusing Effects? Let's Write Better React Together"
+description: "When to skip useEffect: derived state, cached values, resetting state, event logic, and notifying parents."
+date: "2025-01-19"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*-VcRTQRJ_93t31sObh1QCQ.png"
+tags:
+  - react
+  - useEffect
+  - best-practices
+---
+
+![Overusing Effects](https://miro.medium.com/v2/resize:fit:2000/1*-VcRTQRJ_93t31sObh1QCQ.png)
+
+Effects are for syncing with external systems (APIs, DOM, subscriptions). For a lot of “react to state/props” logic, there are simpler options that avoid extra renders and bugs.
+
+## 1. Managing a derived value in state
+
+**Avoid:** Storing `fullName` in state and syncing it in an Effect when `firstName` or `lastName` change. That causes an extra render (stale then correct).
+
+**Better:** Compute during render.
+
+```javascript
+// ✅ Good: calculated during rendering
+const fullName = firstName + " " + lastName;
+```
+
+## 2. Caching expensive calculations in state
+
+**Avoid:** Putting the result in state and updating it in an Effect when inputs change. Again, cascade updates and extra renders.
+
+**Better:** Compute during render; if it’s expensive, cache with `useMemo`.
+
+```javascript
+const visibleOptions = useMemo(() => {
+  return computeOptions(input, options);
+}, [input, options]);
+```
+
+## 3. Resetting state when a prop changes
+
+**Avoid:** Resetting local state (e.g. `comment`) in an Effect when `userId` changes. The tree first renders with stale state, then with reset state.
+
+**Better:** Treat “different userId” as a different conceptual instance by using `key`. React will remount and reset state automatically.
+
+```javascript
+<Profile userId={userId} key={userId} />
+```
+
+## 4. Sharing logic between event handlers
+
+**Avoid:** Putting “when product is in cart, show notification” in an Effect that depends on `product`. That can fire on load or refresh when the cart was already populated—wrong moment for “just added” UX.
+
+**Better:** Call the shared logic from the event handlers that actually add to cart.
+
+```javascript
+function buyProduct() {
+  addToCart(product);
+  showNotification(`Added ${product.name} to the shopping cart!`);
+}
+
+function handleBuyClick() {
+  buyProduct();
+}
+function handleCheckoutClick() {
+  buyProduct();
+  navigateTo("/checkout");
+}
+```
+
+## 5. Notifying parent about state changes
+
+**Avoid:** Calling `onChange(isOn)` in an Effect when `isOn` changes. The child updates, React paints, then the Effect runs and the parent updates—extra pass and possible timing issues.
+
+**Better:** Call `onChange` in the same event that updates state (or make the component controlled).
+
+```javascript
+function updateToggle(nextIsOn) {
+  setIsOn(nextIsOn);
+  onChange(nextIsOn);
+}
+
+function handleClick() {
+  updateToggle(!isOn);
+}
+```
+
+Or make the component fully controlled: parent owns `isOn` and passes `onChange`; no local state.
+
+## Takeaway
+
+Use Effects for synchronizing with *external* systems. For derived data, caching, resetting on prop change, event-driven logic, and notifying parents, prefer:
+
+- Computing during render (or with `useMemo`)
+- Resetting via `key`
+- Doing work in event handlers
+- Calling parent callbacks from the same event that changes state
+
+That keeps updates in one place, avoids cascade renders, and makes behavior easier to reason about.
+
+If you found this helpful, follow for more React tips and patterns. Happy coding!

@@ -1,0 +1,141 @@
+---
+title: "JavaScript Design Patterns for Frontend Developers"
+description: "Singleton, Factory, Observer, Module, and Decorator patterns with examples."
+date: "2025-06-16"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*JI2horwszOqYbdOwYJ1dhQ.png"
+tags:
+  - javascript
+  - design-patterns
+  - frontend
+---
+
+![JS Design Patterns](https://miro.medium.com/v2/resize:fit:2000/1*JI2horwszOqYbdOwYJ1dhQ.png)
+
+As a frontend developer, you'll run into problems that need more than basic coding—design patterns are reusable solutions that make code more maintainable, scalable, and efficient.
+
+Here are five JavaScript design patterns every frontend developer should know, with examples and real-world use.
+
+## 1. Singleton Pattern
+
+Ensures only one instance of a class exists. Useful for config, caches, or shared services.
+
+```javascript
+class Logger {
+  static instance;
+
+  constructor() {
+    if (Logger.instance) return Logger.instance;
+    Logger.instance = this;
+    this.logs = [];
+  }
+
+  log(message) {
+    this.logs.push(message);
+  }
+}
+
+const logger1 = new Logger();
+const logger2 = new Logger();
+console.log(logger1 === logger2); // true
+logger1.log("Hello");
+console.log(logger2.logs); // ['Hello']
+```
+
+## 2. Factory Pattern
+
+Creates objects without specifying the exact class. Good when multiple types share an interface.
+
+```javascript
+function createAnimal(type, name) {
+  switch (type) {
+    case "dog":
+      return new Dog(name);
+    case "cat":
+      return new Cat(name);
+    default:
+      throw new Error(`Unknown animal type: ${type}`);
+  }
+}
+
+const dog = createAnimal("dog", "Fido");
+console.log(dog.speak()); // Woof!
+```
+
+## 3. Observer Pattern
+
+Lets objects react to changes in another object without direct references. Great for events and state.
+
+```javascript
+class Subject {
+  constructor() {
+    this.observers = [];
+  }
+
+  registerObserver(observer) {
+    this.observers.push(observer);
+  }
+
+  notifyObservers(data) {
+    this.observers.forEach((observer) => observer.update(data));
+  }
+}
+
+class Observer {
+  update(data) {
+    console.log(`Received data: ${data}`);
+  }
+}
+
+const subject = new Subject();
+subject.registerObserver(observer1);
+subject.registerObserver(observer2);
+subject.notifyObservers("Hello, world!");
+```
+
+## 4. Module Pattern
+
+Encapsulates private data and functions and exposes only a public API. Helps with structure and hiding implementation.
+
+```javascript
+const myModule = (() => {
+  const privateVariable = "Hello, world!";
+
+  function privateFunction() {
+    console.log(privateVariable);
+  }
+
+  return {
+    publicMethod: () => {
+      privateFunction();
+    },
+  };
+})();
+
+myModule.publicMethod(); // Hello, world!
+```
+
+## 5. Decorator Pattern
+
+Adds behavior to an object without changing its core. Useful for logging, caching, or validation.
+
+```javascript
+function LoggerDecorator(func) {
+  return function (...args) {
+    console.log(`Calling ${func.name} with args: ${args}`);
+    return func(...args);
+  };
+}
+
+const decoratedAdd = LoggerDecorator(add);
+console.log(decoratedAdd(2, 3));
+// Calling add with args: 2,3
+// 5
+```
+
+## Wrapping Up
+
+These five patterns—Singleton, Factory, Observer, Module, and Decorator—cover many frontend scenarios. Using them where they fit will make your code clearer and easier to maintain.
+
+If you found this article helpful, give it a few claps 👏 and follow for more JavaScript and frontend content.

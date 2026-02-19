@@ -1,0 +1,115 @@
+---
+title: "Ace Your Next React Interview: Top 10 Common Questions and How to Crush Them"
+description: "Functional vs class components, events, keys, state, useReducer, performance, portals, errors, refs, and controlled components."
+date: "2025-06-17"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*psPgfsVzv2DImrBzkxrOZg.png"
+tags:
+  - react
+  - interviews
+---
+
+![Ace React Interview](https://miro.medium.com/v2/resize:fit:2000/1*psPgfsVzv2DImrBzkxrOZg.png)
+
+As a frontend engineer, acing a React interview can be daunting. In this post, we'll go through the top 10 common React interview questions and how to answer them with confidence.
+
+### 1. What is the difference between a functional component and a class component?
+
+A functional component is a pure function that takes props and returns JSX. A class component uses class syntax and lifecycle methods.
+
+```javascript
+// Functional
+const Greeting = ({ name }) => <h1>Hello, {name}!</h1>;
+
+// Class
+class Greeting extends React.Component {
+  render() {
+    return <h1>Hello, {this.props.name}!</h1>;
+  }
+}
+```
+
+**Pro tip:** Use functional components for presentational components; use class components when you need complex logic or legacy lifecycle methods.
+
+### 2. How does React handle events?
+
+React uses a synthetic event system—a consistent API across browsers. Use `onClick`, `onChange`, etc., and call `event.preventDefault()` or `event.stopPropagation()` when needed.
+
+### 3. What is the purpose of key in React lists?
+
+Keys help React track list items and optimize re-renders. Use a unique ID from your data (or a stable id from a library like uuid).
+
+```javascript
+{todos.map((todo) => (
+  <li key={todo.id}>{todo.text}</li>
+))}
+```
+
+### 4. How does React handle state changes?
+
+With `setState()` in class components or `useState` in function components. When updating based on previous state, use the callback form: `setCount((c) => c + 1)`.
+
+### 5. What is the difference between useState and useReducer?
+
+`useState` is for simple state; `useReducer` is for complex state logic or multiple related updates.
+
+```javascript
+const [state, dispatch] = useReducer(reducer, initialState);
+// dispatch({ type: 'INCREMENT' })
+```
+
+### 6. How do you optimize the performance of a React application?
+
+- Use `React.memo` to avoid unnecessary re-renders.
+- Use `useCallback` and `useMemo` for expensive callbacks and values.
+- Use `shouldComponentUpdate` or `React.memo` with a custom comparator.
+- Use a data-fetching library (e.g. React Query) for caching and deduplication.
+
+### 7. What is a React portal, and how do you use it?
+
+Portals render children into a DOM node outside the component tree (e.g. modals, tooltips).
+
+```javascript
+import { createPortal } from "react-dom";
+
+const Modal = ({ children }) =>
+  createPortal(
+    <div className="modal">{children}</div>,
+    document.getElementById("modal-root")
+  );
+```
+
+### 8. How do you handle errors in React?
+
+Use try/catch for imperative code. Use **error boundaries** (class components with `componentDidCatch` / `getDerivedStateFromError`) to catch errors in the tree and show a fallback UI.
+
+### 9. What is the purpose of ref in React?
+
+Refs let you access DOM nodes or component instances (e.g. focus, third-party libs).
+
+```javascript
+const inputRef = useRef(null);
+inputRef.current.focus();
+```
+
+### 10. How do you implement a controlled component?
+
+The input value is driven by React state and updated via `onChange`.
+
+```javascript
+const [value, setValue] = useState("");
+return (
+  <input
+    type="text"
+    value={value}
+    onChange={(e) => setValue(e.target.value)}
+  />
+);
+```
+
+### Wrapping Up
+
+Practice these topics and you'll be well prepared for common React interview questions. Share your own interview experiences in the comments!
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

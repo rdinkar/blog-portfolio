@@ -1,0 +1,94 @@
+---
+title: "React Render Props vs. Higher-Order Components: A Deep Dive"
+description: "When to use render props vs HOCs, with examples and common pitfalls."
+date: "2025-06-25"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*0BkS8Wkoe9HsS8pvrZ_m5w.png"
+tags:
+  - react
+  - render-props
+  - hoc
+  - patterns
+---
+
+![Render Props vs HOCs](https://miro.medium.com/v2/resize:fit:2000/1*0BkS8Wkoe9HsS8pvrZ_m5w.png)
+
+Hey there, fellow frontend engineers! 👋 Are you preparing for a React interview or just looking to level up your skills? You're in the right place! Today, we're going to explore two popular patterns in React: Render Props and Higher-Order Components (HOCs). Both techniques help you share behavior between components, but they have different approaches and use cases. By the end of this post, you'll have a solid understanding of when to use each and how to implement them effectively.
+
+### The Problem: Sharing Behavior Between Components
+
+Imagine you're building a React app with multiple components that need to share some common behavior, like handling user authentication or fetching data from an API. You could duplicate the code in each component, but that's not DRY (Don't Repeat Yourself) compliant 😅. Instead, you need a way to decouple the shared behavior from the component logic.
+
+### Render Props: The Basics
+
+Render Props is a technique where you pass a function as a prop to a component, which then uses that function to render its children. This approach allows you to share behavior between components without tightly coupling them.
+
+Here's a simple example:
+
+```javascript
+// MouseTracker.js
+const MouseTracker = ({ render }) => {
+  const [position, setPosition] = React.useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (event) => {
+    setPosition({ x: event.clientX, y: event.clientY });
+  };
+
+  return <div onMouseMove={handleMouseMove}>{render(position)}</div>;
+};
+
+// App.js
+const App = () => (
+  <MouseTracker
+    render={(position) => (
+      <div>
+        Mouse position: {position.x}, {position.y}
+      </div>
+    )}
+  />
+);
+```
+
+In this example, MouseTracker manages mouse position state and provides a render prop. The App passes a render function that displays the position.
+
+### Higher-Order Components (HOCs): The Basics
+
+HOCs are functions that take a component as an argument and return a new component with additional props or behavior.
+
+```javascript
+// withLogger.js
+const withLogger = (WrappedComponent) => {
+  const Logger = (props) => {
+    console.log(`Rendering ${WrappedComponent.name}`);
+    return <WrappedComponent {...props} />;
+  };
+  return Logger;
+};
+
+// App.js
+const LoggedButton = withLogger(Button);
+const App = () => <LoggedButton />;
+```
+
+### Key differences: Render Props vs. HOCs
+
+- **Inversion of Control:** With Render Props, the parent controls rendering. With HOCs, the HOC controls the wrapped component.
+- **Props:** Render Props pass a function; HOCs pass additional props to the wrapped component.
+- **Reusability:** Render Props are more flexible—you can pass different render functions. HOCs are more rigid—you often create a new HOC per use case.
+
+### Common Pitfalls and Performance Issues
+
+- **Wrapper Hell:** Avoid deep nesting of HOCs or Render Props; it hurts performance and readability.
+- **Props Over-propagation:** With HOCs, pass only necessary props to avoid prop drilling.
+- **Re-rendering:** With Render Props, be mindful of re-renders when the parent re-renders.
+
+### Wrapping Up
+
+Render Props and HOCs are both powerful for sharing behavior in React. By understanding the differences and best practices, you can choose the right approach and write more maintainable code.
+
+If you're preparing for a React interview, I hope this post has helped. Don't forget to practice! 💪
+
+**Additional Resources:** React documentation on [Render Props](https://react.dev/learn/passing-props-to-a-component) and [Higher-Order Components](https://legacy.reactjs.org/docs/higher-order-components.html).
+
+If you found this article helpful, I'd really appreciate your support! 👏 Give it a clap and Follow me here on Medium for more in-depth articles about React, frontend development, and software engineering best practices.

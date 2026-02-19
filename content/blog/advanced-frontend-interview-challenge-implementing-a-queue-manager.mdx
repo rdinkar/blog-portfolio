@@ -1,0 +1,80 @@
+---
+title: "Advanced Frontend Interview Challenge: Implementing a Queue Manager"
+description: "Build a queue that processes async requests with concurrency limit, progress, and FIFO order."
+date: "2025-04-13"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:1400/1*5DAOG67iWbLOcmGR572mVg.png"
+tags:
+  - frontend
+  - interviews
+  - react
+  - async
+  - queue
+---
+
+![Queue Manager](https://miro.medium.com/v2/resize:fit:1400/1*5DAOG67iWbLOcmGR572mVg.png)
+
+A common frontend interview question is to implement a queue manager. Here’s a clear way to solve it.
+
+## The Problem Statement
+
+Build a system where:
+
+- Users can add requests with a button.
+- Each request takes 3–5 seconds to complete.
+- When at capacity, new requests are queued.
+- Requests are processed in first-come-first-served order.
+
+## Why This Question Matters
+
+It touches:
+
+- **Async:** Requests that take 3–5 seconds.
+- **State:** Queue, in-flight, and completed requests.
+- **UI:** Keeping the user informed (e.g. progress).
+
+## The Solution: Queue Manager
+
+Core idea: keep three lists—`queue`, `processing`, `completed`—and a `maxConcurrent` limit. A `useEffect` moves work from `queue` to `processing` when there’s capacity, runs the async “request,” then moves it to `completed`.
+
+**State:**
+
+- `queue`: pending requests
+- `processing`: currently running (length ≤ maxConcurrent)
+- `completed`: finished requests
+- `progress`: per-request progress (e.g. 0–100)
+
+**Concurrency:**
+
+- `maxConcurrent` (e.g. 2) caps how many run at once.
+- In `useEffect`, if `queue.length > 0` and `processing.length < maxConcurrent`, take the first item from `queue`, add it to `processing`, and start the async job. When the job resolves, remove it from `processing` and add to `completed`.
+
+**Processing time:**
+
+- Use `Math.random() * 2000 + 3000` (3–5 seconds) and `setTimeout`/Promise to simulate.
+
+**Progress:**
+
+- Store progress per request id (e.g. in `progress[id]`). In the async job, use `setInterval` to update progress from 0 to 100 over the same duration, then clear the interval and set 100 when done.
+
+**UI:**
+
+- “Add Request” adds `{ id: Date.now(), status: 'queued' }` to `queue`.
+- Render three sections: Queue (with progress bars), Processing (with progress), Completed (count or list).
+
+## Interview Discussion Points
+
+Be ready to extend the design:
+
+- **Failures:** Retry, move to “failed” list, or re-queue.
+- **Prioritization:** Priority field + sort queue or use a priority queue.
+- **Cancellation:** AbortController or a “cancelled” flag and skip applying result.
+- **Multiple executors:** Same queue state in a store (e.g. context/Redux) so multiple components don’t each run their own loop.
+- **Persistence:** Serialize queue (and maybe processing) to localStorage and restore on load.
+
+## Wrapping Up
+
+Implementing a queue manager with concurrency, progress, and FIFO order shows you understand async, state, and UI—great for interviews and real-world UIs (uploads, batch jobs).
+
+If you found this article helpful, give it a few claps 👏 and follow for more frontend and interview content.

@@ -1,0 +1,111 @@
+---
+title: "Mastering React Performance Optimization: A Comprehensive Guide"
+description: "useMemo, colocating state, virtualization, and when (not) to optimize."
+date: "2025-02-01"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:2000/1*cYPAJaawr-lrk1_ZprerVw.png"
+tags:
+  - react
+  - performance
+  - optimization
+---
+
+![React Performance](https://miro.medium.com/v2/resize:fit:2000/1*cYPAJaawr-lrk1_ZprerVw.png)
+
+Sluggish React UIs often come from unnecessary work on every render, state that’s too high in the tree, or rendering huge lists. Here’s a concise guide to fixing them.
+
+## The performance problem
+
+A dashboard that recalculates derived data on every render—even when nothing relevant changed—can feel slow. So can a single state object at the top that forces the whole tree to rerender, or a list that renders thousands of DOM nodes.
+
+## 1. Memoization (useMemo)
+
+Wrap expensive calculations in `useMemo` so they only run when their inputs change.
+
+```javascript
+const userStats = useMemo(() => {
+  return userData.reduce((acc, data) => ({
+    totalOrders: acc.totalOrders + data.orders,
+    totalSpent: acc.totalSpent + data.spent,
+    lastActive: data.lastActive > acc.lastActive ? data.lastActive : acc.lastActive,
+  }), { totalOrders: 0, totalSpent: 0, lastActive: 0 });
+}, [userData]);
+```
+
+Result: stats are recalculated only when `userData` changes, not on every render.
+
+## 2. Colocate state
+
+Lifting all state to a root or high-level component can cause the whole subtree to rerender on any update. Moving state down so each part of the UI owns only what it needs reduces unnecessary rerenders.
+
+**Before:** One big state in `AdminPanel`; any change rerenders everything.
+
+**After:** Each section (e.g. `UserInfo`, `Preferences`, `ActivityLog`) holds its own state. Updates in one don’t force others to rerender.
+
+## 3. Virtualize long lists
+
+Rendering thousands of list items creates too many DOM nodes and hurts performance. Use a virtual list (e.g. `react-window`) so only visible rows are rendered.
+
+```javascript
+import { FixedSizeList } from "react-window";
+
+function InfiniteUserList({ users }) {
+  const Row = ({ index, style }) => (
+    <div style={style} className="user-row">
+      <span>{users[index].name}</span>
+      <span>{users[index].email}</span>
+    </div>
+  );
+
+  return (
+    <FixedSizeList
+      height={400}
+      width="100%"
+      itemCount={users.length}
+      itemSize={50}
+    >
+      {Row}
+    </FixedSizeList>
+  );
+}
+```
+
+Benefits: lower memory use, faster initial render, smoother scrolling.
+
+## When to optimize (and when not to)
+
+- **Measure first:** Use React DevTools Profiler (and production builds) to see what’s actually slow.
+- **User impact:** Optimize things users notice and that affect core flows.
+- **Frequency:** Prioritize components that render often or with a lot of data.
+- Avoid optimizing components that render rarely; focus where it matters.
+
+## Measuring performance
+
+A simple render-timing hook can help during development:
+
+```javascript
+function usePerformanceMonitor(componentName) {
+  useEffect(() => {
+    const startTime = performance.now();
+    return () => {
+      const duration = performance.now() - startTime;
+      console.log(`${componentName} rendered in ${duration}ms`);
+    };
+  });
+}
+```
+
+Use the Profiler for real bottlenecks; this is a lightweight way to spot heavy renderers.
+
+## Lessons learned
+
+- **Premature optimization:** Don’t optimize code that isn’t measured as slow.
+- **Bundle size:** Check `npm run build` and analyze bundle; big dependencies can hurt load time.
+- **Production builds:** Test performance in production mode; development mode is slower and can mislead.
+
+## Wrapping up
+
+Optimize where it matters: memoize heavy computations, keep state close to where it’s used, virtualize long lists, and always measure before and after. The best optimization is often the one you don’t need—build sensibly, measure, then optimize thoughtfully.
+
+If you found this helpful, give it a clap 👏 and follow for more React and frontend content.

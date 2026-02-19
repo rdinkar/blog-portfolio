@@ -1,0 +1,75 @@
+---
+title: "The Truth About React Context and Rerenders: It's Not What You Think"
+description: "Context does not reduce rerenders by itself—React.memo does. When and how to use Context."
+date: "2025-02-22"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:1400/1*27Ns3idSgJISnvpkCBrgkA.png"
+tags:
+  - react
+  - context
+  - performance
+---
+
+![React Context](https://miro.medium.com/v2/resize:fit:1400/1*27Ns3idSgJISnvpkCBrgkA.png)
+
+A lot of us assume Context is a performance tool. It isn’t. Context is a way to pass data through the tree without prop drilling—it doesn’t, by itself, prevent rerenders. Here’s what actually happens.
+
+## The Big Misconception
+
+Someone says: “Let’s use Context to optimize this!” The idea is that moving values into Context will reduce rerenders. In reality, Context by itself doesn’t optimize anything and can make rerenders worse if the value changes often and many components consume it.
+
+## The Reality of Context and Rerenders
+
+**Scenario 1: Context doesn’t prevent rerenders**
+
+When the provider’s value changes, every component that *renders under* that provider can rerender—including children that don’t use Context. That’s normal React: when a parent rerenders, by default its subtree rerenders too.
+
+```javascript
+// When count changes:
+// Parent rendered, ChildA rendered, ChildB rendered, ChildC rendered
+// Even ChildA and ChildC don’t use Context!
+```
+
+**Scenario 2: Same with props**
+
+If you pass `count` as a prop instead of Context, you get the same behavior: Parent, ChildA, ChildB, ChildC all rerender when `count` changes. So in terms of “who rerenders,” Context and props are the same here.
+
+**Scenario 3: Nested components**
+
+With a Provider → MiddleComponent → ChildB (ChildB uses Context), when the context value changes you still get: Parent, Middle, ChildB. The whole path rerenders. Context doesn’t “skip” intermediate components.
+
+## The Real Solution: React.memo
+
+To *avoid* rerenders, you need to break the “parent rerenders → children rerender” chain. That’s what `React.memo` does: it lets a component skip rerendering when its props (and the value it reads from Context, in practice) haven’t changed.
+
+```javascript
+const MemoizedChildA = React.memo(function ChildA() {
+  return <div>A</div>;
+});
+
+const MemoizedChildB = React.memo(function ChildB() {
+  const count = useContext(CountContext);
+  return <div>Count: {count}</div>;
+});
+```
+
+Now when `count` changes, only the parent and the components that actually need the new value (like ChildB) need to rerender; memoized children that don’t depend on that value can skip.
+
+## The Real Truth About Context
+
+- Context is **not** a performance optimization—it’s a way to pass data down the tree.
+- In terms of rerenders, it behaves like props: when the value changes, consumers and their ancestors rerender by default.
+- **React.memo** (and selective subscriptions, e.g. splitting contexts or using state libraries) is what actually reduces rerenders.
+- Use Context when you want to avoid prop drilling or share values across the tree—not because you expect fewer rerenders.
+
+## When to Use Context
+
+Use Context when you need to:
+
+- Avoid passing props through many layers.
+- Share values across different parts of the tree.
+
+Don’t use it expecting performance gains; combine it with `React.memo`, smaller contexts, or other patterns if rerenders become a problem.
+
+If you found this article helpful, give it a clap 👏 and follow for more on React and frontend development.
