@@ -54,11 +54,12 @@ export function getAllBlogPosts(): BlogPost[] {
     .map((slug) => getBlogPost(slug))
     .filter((post): post is BlogPost => post !== null)
     .filter((post) => post.frontmatter.published)
-    .sort(
-      (a, b) =>
-        new Date(b.frontmatter.date).getTime() -
-        new Date(a.frontmatter.date).getTime()
-    );
+    .sort((a, b) => {
+      // Sort by date published, most recent first
+      const dateA = new Date(a.frontmatter.date).getTime();
+      const dateB = new Date(b.frontmatter.date).getTime();
+      return dateB - dateA;
+    });
 }
 
 export function getAdjacentPosts(slug: string): {
