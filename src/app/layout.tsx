@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lora, Inter } from "next/font/google";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import "./globals.css";
 
 const lora = Lora({
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body
         className={`${lora.variable} ${inter.variable} font-sans antialiased`}
       >
+        <GoogleAnalytics />
         {children}
       </body>
     </html>
