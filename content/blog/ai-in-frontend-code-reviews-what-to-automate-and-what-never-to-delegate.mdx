@@ -1,0 +1,221 @@
+---
+title: "AI in Frontend Code Reviews: What to Automate and What Never to Delegate"
+description: "Where AI helps in frontend code reviews—and where senior engineers should never delegate judgment or architectural decisions."
+date: "2026-02-19"
+author: "Rahul Dinkar"
+published: true
+image: "https://miro.medium.com/v2/resize:fit:1200/1*YaVzlCGzgHiQ4-1mzXK0Mg.png"
+tags:
+  - ai-coding
+  - code-review
+  - software-engineering
+  - frontend
+  - best-practices
+---
+
+![AI in Frontend Code Reviews](https://miro.medium.com/v2/resize:fit:1200/1*YaVzlCGzgHiQ4-1mzXK0Mg.png)
+
+Code reviews are where engineering maturity shows up. Not in how clean a component looks. Not in how many hooks you used. Not in how clever the abstraction feels. But in whether the system still makes sense after the change.
+
+AI is now part of that workflow whether we like it or not. People paste diffs into tools. Editors suggest changes inline. Comments get drafted automatically. The real question is not whether AI should be involved. The real question is where it fits without diluting engineering judgment.
+
+## What AI can safely assist with in code reviews
+
+There are parts of a review that are mechanical. Pattern recognition. Repetition detection. Small correctness checks. AI is surprisingly good at these.
+
+### 1. Surface level correctness
+
+Given a React component, AI can reliably point out:
+
+- Missing dependency in useEffect
+- Obvious unused variables
+- Incorrect prop types
+- Inconsistent naming
+- Redundant conditions
+- Dead code branches
+
+**Example:**
+
+```javascript
+useEffect(() => {
+  fetchData(userId);
+}, []);
+```
+
+AI will flag the missing `userId` dependency. That is useful. It saves a human reviewer from catching the same mistake for the hundredth time.
+
+It can also notice when a piece of state is declared but never used, or when a callback recreates on every render without memoization. These are low level hygiene issues. Let AI help here.
+
+### 2. Test coverage gaps
+
+If you show AI a component and its test file, it can point out:
+
+- No test for error states
+- No coverage for loading branch
+- Missing edge case for empty arrays
+- Snapshot tests without behavioural assertions
+
+This is not deep insight. It is pattern matching. But it reduces friction in reviews.
+
+### 3. Refactor suggestions inside a known boundary
+
+If a PR introduces duplicated logic across three components, AI can:
+
+- Suggest extracting a custom hook
+- Consolidate repeated mapping logic
+- Inline trivial wrapper functions
+
+When the architectural boundary is already established, AI can help clean inside it.
+
+## What must always stay human
+
+Code review is not just about correctness. It is about intent. And intent lives in context.
+
+### 1. Architecture decisions
+
+AI cannot answer:
+
+- Should this state be global or local?
+- Should this be server driven or client derived?
+- Is this abstraction premature?
+- Is this coupling acceptable given product direction?
+
+**Consider an example.** A PR introduces a global context for something previously local. AI might say: "This simplifies prop drilling." A senior reviewer asks: "Why does this need to be globally observable? What future change does this support?"
+
+That question is architectural. It requires understanding roadmap, ownership, and scaling concerns. AI has none of that context.
+
+### 2. Tradeoffs in state management
+
+In complex state scenarios, correctness is not enough. Imagine:
+
+- A table component
+- Server driven filters
+- Derived client side sorting
+- Persisted view configuration
+
+AI can validate that the reducer logic is sound. It cannot evaluate whether you are coupling backend filter contracts too tightly to UI state. It cannot ask: "What happens when the backend adds a dynamic filter at runtime?"
+
+That is systemic thinking.
+
+### 3. Performance reasoning
+
+AI can suggest adding useMemo. It cannot tell you whether that memo is hiding a deeper problem. In reviews, performance questions are often:
+
+- Why is this re rendering so often?
+- Why is this list recalculating derived data on scroll?
+- Why is this expensive computation in render at all?
+
+AI may optimise locally. Humans trace data flow. If a PR introduces:
+
+```javascript
+const derived = useMemo(() => computeHeavy(data), [data]);
+```
+
+AI says good job. A senior reviewer asks: "Why is computeHeavy running on every keystroke? Should this live closer to the data layer?"
+
+That is the difference.
+
+## Surface level issues vs systemic blind spots
+
+Let me give you two real patterns I have seen.
+
+### Case 1: The missing dependency
+
+AI catches:
+
+- Missing dependency in useEffect
+- Suggests adding `filters` to dependency array
+
+But the effect triggers an API call.
+
+Adding `filters` means:
+
+- Every local change now fires network requests
+- No debounce
+- No cancellation
+- Race conditions introduced
+
+AI fixed a React rule violation. It accidentally created a production bug.
+
+The systemic question is: _"Should this effect exist at all?"_
+
+### Case 2: Over memoization
+
+AI sees:
+
+- A callback passed to child components
+- Re renders happening
+- Suggests useCallback
+
+But the real issue is:
+
+- Parent state updates too frequently
+- Data normalisation happening inside render
+- No separation between view state and data state
+
+Memoizing everything hides the noise but does not solve the root cause. AI optimises shapes. Humans optimise behaviour.
+
+## How senior engineers should guide juniors using AI feedback
+
+This is where it gets important. Juniors are already using AI in reviews. Some paste entire PRs into tools before submitting. Some copy suggested fixes blindly. The goal is not to ban that. The goal is to teach them how to use it responsibly.
+
+### 1. Make them explain AI suggestions
+
+If a junior says: "AI suggested adding useMemo here."
+
+Ask: "What problem is this solving?"
+
+If they cannot answer, the change does not go in. AI suggestions must be justified in human terms.
+
+### 2. Separate rule compliance from design reasoning
+
+Teach juniors that:
+
+- Lint rule violations are fixable by tools
+- Design decisions are defendable by reasoning
+
+AI can help with the first. They must grow into the second.
+
+### 3. Turn AI feedback into teaching moments
+
+If AI flags a missing dependency, ask: "What would happen if this value changes and the effect does not re run?" Make them simulate behaviour mentally.
+
+The goal is not to rely on AI to catch mistakes. The goal is to internalise why those mistakes matter.
+
+### 4. Encourage pre review AI passes, not post review defence
+
+AI is great as a pre submission hygiene check. It is terrible as a shield.
+
+If a junior says: "AI said this is fine." That is a red flag.
+
+Code review is about team standards, not tool validation.
+
+## A practical mental model
+
+Think of AI in code reviews as:
+
+- A lint layer with deeper syntax awareness
+- A pattern detector
+- A consistency enforcer
+
+Not as:
+
+- An architect
+- A performance auditor
+- A product aware decision maker
+
+Let AI reduce cognitive load on repetitive checks. Reserve human attention for:
+
+- Intent
+- Tradeoffs
+- Data flow
+- System boundaries
+- Long term maintainability
+
+Frontend systems fail rarely because someone forgot a dependency. They fail because boundaries were unclear. Because state lived in the wrong place. Because performance problems were treated cosmetically.
+
+AI can help keep the floor clean. Humans decide where the walls go.
+
+If we keep that distinction clear, AI becomes leverage inside code reviews. If we blur it, we outsource judgment.
+
+And judgment is the one thing senior engineers cannot afford to delegate.
