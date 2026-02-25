@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Lora, Inter } from "next/font/google";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const lora = Lora({
@@ -37,6 +38,7 @@ export default function RootLayout({
       >
         <GoogleAnalytics />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
