@@ -1,0 +1,208 @@
+---
+title: "Designing Frontend Systems with AI in the Loop (What Changes, What Doesn't)"
+description: "Frontend system design is about managing constraints. AI is useful during exploration; architecture decisions still belong to humans."
+date: "2026-03-05"
+author: "Rahul Dinkar"
+published: true
+image: ""
+tags:
+  - ai
+  - frontend
+  - system-design
+  - architecture
+  - react
+---
+
+Frontend system design has always been less about picking the "right" technology and more about managing constraints.
+
+- How much data moves through the UI.
+- How often the state changes.
+- What parts of the system must stay responsive under load.
+- How teams will extend the codebase a year from now.
+
+AI has started appearing in these conversations too. People ask it to suggest architectures, review design docs, or generate diagrams. After using it during real design discussions, my view is simple. AI is useful during exploration. Architecture decisions still belong to humans. Not because AI is bad at code, but because system design is mostly about context that lives outside the codebase.
+
+## Where AI fits in the system design process
+
+System design usually moves through two distinct phases. First you explore the space of possibilities. Then you make decisions based on constraints. AI is helpful in the first phase. The second phase is where human judgment matters more.
+
+### 1. Exploration
+
+Exploration is about expanding the option space. When designing a new frontend system, questions often start broad:
+
+- Should this be client heavy or server heavy?
+- Do we need real time synchronisation?
+- How should state be partitioned across modules?
+- Where should expensive computations happen?
+
+AI can help generate alternative approaches quickly. For example, if you describe a data heavy UI with complex filters and live updates, AI might outline several patterns:
+
+- Client side state management with incremental updates
+- Server driven pagination with lightweight client state
+- Event stream updates feeding a local store
+- Background workers for heavy data transformations
+
+This stage is about seeing possibilities you might not immediately consider. AI is good at that. But the moment exploration turns into a decision, the conversation changes.
+
+### 2. Decisions
+
+Real system design decisions are shaped by constraints. Questions start sounding different:
+
+- How many users will operate this dashboard simultaneously?
+- What is the acceptable delay between backend updates and UI visibility?
+- Which teams will maintain this code?
+- How expensive is a regression in this system?
+
+AI cannot answer these because they are not technical problems. They are product and organisational constraints. Architecture lives in that intersection.
+
+## Why architecture requires human context
+
+When designing frontend systems at scale, most decisions involve tradeoffs that are invisible in code snippets. Three kinds of context matter a lot.
+
+### 1. Product behaviour
+
+The UI does not exist in isolation. It exists to support specific user workflows. Consider a data exploration dashboard. Two architectures might both be technically valid:
+
+- The client pulls raw data and performs filtering locally.
+- The server performs filtering and the client simply renders results.
+
+The right choice depends on product behaviour:
+
+- How large are datasets?
+- How frequently do filters change?
+- Do users expect immediate feedback while adjusting filters?
+
+AI can list both patterns. It cannot evaluate which aligns with product expectations.
+
+### 2. Operational constraints
+
+Real systems operate under limits. Examples include:
+
+- API rate limits
+- Browser memory limits
+- Network variability
+- Device performance differences
+
+Architecture decisions often revolve around managing these limits. If a system processes large datasets in the browser, you might introduce:
+
+- Web Workers for background computation
+- Incremental rendering
+- Virtualised lists
+
+AI can suggest these techniques. It does not understand the operational pressure that makes them necessary.
+
+### 3. Team ownership
+
+Architecture also reflects how teams work. A modular frontend with clear boundaries is not just a technical preference. It allows multiple teams to work independently. In some organisations, a central team owns shared components; in others, each team owns its module. AI does not know your team structure. Humans do.
+
+## Designing data heavy UIs
+
+Data heavy applications expose the limits of naive frontend design very quickly. Imagine a product where users:
+
+- Query large datasets
+- Apply complex filters
+- Save customised views
+- Share those views with others
+
+I have worked on systems like this where both filters and table columns were dynamically controlled by the backend. The frontend had to support:
+
+- Unlimited filter combinations
+- User configurable table columns
+- Persisted view configurations
+- Real time collaboration on shared views
+
+Designing this system required decisions about where data transformations should happen.
+
+- Should filtering run in the browser or the backend?
+- Should view configuration live in a global store or per module?
+- How do multiple tabs maintain independent state?
+
+AI can outline options. The final architecture depends on deeper questions:
+
+- How large can datasets become?
+- Do users expect instant filter changes?
+- Can the backend handle frequent re queries?
+
+In one case we moved heavy transformations into background workers because the main thread became a bottleneck during large dataset operations. AI might suggest using workers. But the trigger for that decision was measurement.
+
+## Designing real time systems
+
+Real time features introduce a different kind of complexity. Consider a trading dashboard or collaborative editing interface. Requirements might include:
+
+- Live updates from server streams
+- Local optimistic updates
+- Conflict resolution
+- UI consistency during rapid state changes
+
+AI can describe patterns like event driven state updates or WebSocket synchronisation. But the real design questions look like this:
+
+- What happens if updates arrive faster than the UI can render?
+- How should the UI behave when the network drops?
+- Which updates must be reflected immediately and which can be batched?
+
+These questions require thinking about failure modes and user expectations. They also require understanding the specific domain. Architecture emerges from those constraints, not from pattern catalogs.
+
+## Performance critical applications
+
+Performance critical frontends force architectural discipline. Examples include:
+
+- Data visualisation tools
+- Interactive design software
+- Real time monitoring dashboards
+
+These systems often deal with:
+
+- Large datasets
+- Frequent updates
+- Complex rendering pipelines
+
+A common pattern is separating computation from rendering.
+
+- Heavy data processing moves to background workers.
+- Rendering pipelines focus only on display.
+- State updates are carefully controlled to avoid unnecessary work.
+
+AI can recommend these patterns. But it cannot judge when they are necessary. Introducing workers too early adds complexity. Introducing them too late causes visible lag. The right moment comes from observation and measurement. Experience matters here.
+
+## How senior engineers actually use AI during architecture work
+
+AI rarely appears during the final decision meeting. It shows up earlier.
+
+### 1. Exploring design alternatives
+
+When starting a design doc, AI can help enumerate possible approaches. It is useful for asking questions like:
+
+- What patterns exist for synchronising client state with event streams?
+- What are common strategies for handling large datasets in browser applications?
+
+The goal is not to accept the answer as truth. The goal is to broaden the space of ideas.
+
+### 2. Stress testing an idea
+
+Once you have a proposed architecture, AI can be useful as a form of adversarial thinking. You might ask:
+
+- What failure modes could appear in this design?
+- Under what conditions might this architecture break down?
+
+Sometimes it surfaces edge cases you overlooked. But the responsibility for evaluating those edge cases remains with you.
+
+### 3. Accelerating documentation
+
+AI is also useful for turning design thoughts into structured documentation. System diagrams, architecture summaries, and tradeoff explanations can be drafted faster. The important part is that the reasoning still comes from you.
+
+## A grounded way to think about AI in architecture
+
+Architecture is the process of turning constraints into structure. Those constraints include:
+
+- Product requirements
+- Performance limits
+- Operational realities
+- Team organisation
+
+AI does not experience those constraints. It can only reason about patterns. That makes it a useful exploration tool but a poor decision maker. A healthy workflow looks like this:
+
+- Use AI to explore the design space.
+- Use experience and context to narrow it.
+- Use real constraints to make the final call.
+
+In that model, AI expands thinking but does not replace judgment. And in system design, judgment is the real work.
