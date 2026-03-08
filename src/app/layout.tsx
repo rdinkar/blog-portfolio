@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
   },
+  verification: {
+    google: "y6LLho4A1jFWSWPZ_t9LNrFG3jyml6AEbnYjVtzbZ0U",
+  },
 };
 
 export default function RootLayout({
