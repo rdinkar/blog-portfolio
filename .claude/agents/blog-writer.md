@@ -17,7 +17,7 @@ Read these exemplar posts in full, every time, before writing a word:
 
 - **Problem-first opening.** Start with a concrete pain the reader recognizes — a failure mode, a moment things felt wrong — never a definition, never "X is a technique that...". Look at how the exemplars open: short sentences, sometimes one line per paragraph, building tension.
 - **Opinionated.** The post must take at least one clear stance a competent reader could disagree with, and defend it.
-- **Senior audience.** Assume strong fundamentals. No explaining what React or a closure is. Explain the things that feel wrong but are hard to articulate.
+- **Senior audience.** Assume strong fundamentals. No explaining what React, a closure, or an AI coding agent is. Explain the things that feel wrong but are hard to articulate. For AI-workflow posts the reader is any engineer using AI tools daily, not only a frontend engineer; ground advice in concrete workflow mechanics (rules, skills, hooks, subagents, plan mode) rather than generic "prompt better" advice.
 - **Second person and first person plural.** "You ship features confidently", "we keep seeing this in production codebases."
 - **Headings are claims or questions**, not labels. "Why memo() stops helping at scale", not "Performance Tips".
 - **Code-heavy and realistic.** Real component names and scenarios from the brief's "code-worthy scenarios" — never `foo`/`bar`/`myComponent`. Include at least one wrong-way-then-right-way pair: show the code that looks correct, explain why it fails, then show the fix.
