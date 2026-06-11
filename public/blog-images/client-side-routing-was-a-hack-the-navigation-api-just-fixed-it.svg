@@ -1,0 +1,44 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Client-Side Routing Was a Hack. The Navigation API Just Fixed It.">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#23233f"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- visual metaphor: tangled legacy paths converging into one clean route -->
+  <g fill="none" stroke-linecap="round">
+    <!-- tangled hack lines (left), muted -->
+    <path d="M 80 120 C 220 60, 300 220, 420 150 S 600 90, 720 168" stroke="#6b6b8f" stroke-width="2" stroke-dasharray="6 8" opacity="0.55"/>
+    <path d="M 80 175 C 200 260, 340 90, 460 190 S 620 230, 720 172" stroke="#6b6b8f" stroke-width="2" stroke-dasharray="2 7" opacity="0.5"/>
+    <path d="M 80 230 C 240 180, 280 300, 440 240 S 640 130, 720 176" stroke="#6b6b8f" stroke-width="2" stroke-dasharray="10 6" opacity="0.45"/>
+    <path d="M 80 285 C 230 330, 360 170, 500 250 S 650 220, 720 180" stroke="#6b6b8f" stroke-width="2" stroke-dasharray="4 9" opacity="0.4"/>
+    <!-- single clean route (right), accent -->
+    <path d="M 720 174 H 1080" stroke="#4fd1a5" stroke-width="5"/>
+    <path d="M 1080 174 l -26 -14 m 26 14 l -26 14" stroke="#4fd1a5" stroke-width="5"/>
+  </g>
+
+  <!-- convergence node -->
+  <circle cx="720" cy="174" r="11" fill="#1a1a2e" stroke="#4fd1a5" stroke-width="4"/>
+
+  <!-- labels for the metaphor -->
+  <g font-family="Inter, -apple-system, sans-serif" font-size="20" fill="#8a8aa8">
+    <text x="84" y="98">click hijack</text>
+    <text x="84" y="330">popstate · pushState · scrollTo</text>
+  </g>
+  <text x="752" y="146" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="600" fill="#4fd1a5" letter-spacing="2">ONE NAVIGATE EVENT</text>
+
+  <!-- title -->
+  <g font-family="Inter, -apple-system, sans-serif" font-weight="700" fill="#f5f5f7">
+    <text x="80" y="445" font-size="58">Client-Side Routing Was a Hack.</text>
+    <text x="80" y="517" font-size="58">The Navigation API <tspan fill="#4fd1a5">Just Fixed It.</tspan></text>
+  </g>
+
+</svg>
