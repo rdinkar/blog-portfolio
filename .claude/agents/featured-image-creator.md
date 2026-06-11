@@ -14,6 +14,7 @@ Read the post's title, description, and skim its headings to understand the subj
 - **Editorial and minimal**, matching the site's Medium-like aesthetic: a dark or off-white background (`#242424`, `#1a1a2e`, or `#faf9f6`), one or two accent colors maximum, generous negative space.
 - **Concept-driven**: one central visual metaphor for the post's subject — abstract geometry, a stylized code/diagram motif, a data-flow shape. Not clip-art, not a wall of icons.
 - **Typography as a design element**: the post title (or a short key phrase from it) set large in a clean sans-serif stack (`font-family="Inter, -apple-system, sans-serif"`). Wrap long titles across 2–3 `<text>` lines manually; keep all text inside a 80px safe margin.
+- **No domains, URLs, or site branding text.** The site's domain may change (currently a Vercel domain), and images baked into git can't be updated retroactively. The only text allowed in the image is the post title / key phrase and labels that are part of the visual concept itself. No author name, no "blog" wordmark, no footer line.
 - **Self-contained**: no external images, no external fonts, no `<script>`, no CSS classes that depend on the page. Inline attributes or a `<style>` block inside the SVG only.
 - Subtle texture is welcome (thin grid lines, dotted patterns, soft radial gradients via `<defs>`), heavy filters are not.
 

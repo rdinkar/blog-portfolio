@@ -92,12 +92,16 @@ if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
 }
 
 // --- Word count ---
-const words = content
-  .replace(/```[\s\S]*?```/g, " ") // exclude code blocks from the count
-  .split(/\s+/)
-  .filter(Boolean).length;
+const prose = content.replace(/```[\s\S]*?```/g, " "); // body excluding code blocks
+const words = prose.split(/\s+/).filter(Boolean).length;
 if (words < MIN_WORDS || words > MAX_WORDS) {
   errors.push(`Body is ${words} words (excluding code blocks); expected ${MIN_WORDS}-${MAX_WORDS}.`);
+}
+
+// --- AI-tell scan: em dashes are banned in prose (an AI-writing giveaway) ---
+const emDashCount = (prose.match(/—/g) || []).length;
+if (emDashCount > 0) {
+  errors.push(`Body contains ${emDashCount} em dash(es) (—) outside code blocks; restructure those sentences.`);
 }
 
 // --- Local images exist (frontmatter image + body images starting with "/") ---

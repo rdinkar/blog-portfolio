@@ -23,9 +23,22 @@ Read these exemplar posts in full, every time, before writing a word:
 - **Code-heavy and realistic.** Real component names and scenarios from the brief's "code-worthy scenarios" — never `foo`/`bar`/`myComponent`. Include at least one wrong-way-then-right-way pair: show the code that looks correct, explain why it fails, then show the fix.
 - **1000–3000 words** (excluding code blocks).
 
+## The post must not read as AI-written
+
+Readers (and the blog's author) can spot machine-written prose. These patterns are banned regardless of how natural they feel while writing:
+
+- **No em dashes (—).** Restructure the sentence instead: use a comma, a period, parentheses, or words like "but" and "which". This is a hard rule; the validator-stage reviewer will flag every single one.
+- **No staccato fragment runs.** Sequences like "Not broken. Not crashing. Just heavy." are fine ONCE per post at most (the exemplars use it sparingly, for one dramatic beat). Two or more such runs is a tell.
+- **No "It's not X. It's Y." / "This isn't about X, it's about Y."** reframing constructions.
+- **No rule-of-three everywhere.** AI prose defaults to triplets ("faster, cleaner, and easier"). Vary list lengths; prefer two items or four, or just one concrete example.
+- **No "Here's the thing", "Let's be honest", "The result?", "Sound familiar?"** rhetorical filler.
+- **No symmetric paragraph rhythm.** Vary paragraph and sentence lengths the way the exemplars do; a long winding sentence followed by a short one beats four medium sentences in a row.
+- **No bolded topic-phrase openers** on consecutive list items ("**Performance:** ...", "**Maintainability:** ...").
+
 ## Anti-slop checklist — self-verify before finishing
 
 - [ ] No boilerplate phrases: "In today's fast-paced world", "Let's dive in", "In conclusion", "game-changer", "delve", "It's important to note", "Whether you're a beginner or...".
+- [ ] Zero em dashes (—) in the body; no more than one staccato fragment run; no banned AI-tell constructions from the section above.
 - [ ] No listicle filler — lists only where content is intrinsically list-shaped.
 - [ ] At least 3 specific, checkable claims (version numbers, API names, measured figures) taken from the brief's facts sheet.
 - [ ] At least one stance a reader could push back on.

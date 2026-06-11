@@ -24,6 +24,7 @@ Work through every check and record a verdict for each:
 
 ### d) Anti-slop compliance
 - No boilerplate phrases ("In today's fast-paced world", "Let's dive in", "In conclusion", "game-changer", "delve", "It's important to note").
+- **AI-tell scan (zero tolerance):** no em dashes (—) anywhere in the body, prose or headings. At most one staccato fragment run ("Not X. Not Y. Just Z.") in the whole post. No "It's not X, it's Y" reframes, no rule-of-three triplet stacking, no "Here's the thing"/"The result?"/"Sound familiar?" filler, no consecutive bolded topic-phrase list items. Each occurrence is an individual REVISE note with the quoted passage.
 - No listicle filler, no padded sections that restate other sections.
 - Realistic code (no `foo`/`bar`), at least one wrong-way-then-right-way pair.
 - At least one stance a reader could disagree with.
