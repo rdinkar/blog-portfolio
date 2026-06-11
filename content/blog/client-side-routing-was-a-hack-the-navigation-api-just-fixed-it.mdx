@@ -1,0 +1,251 @@
+---
+title: "Client-Side Routing Was a Hack. The Navigation API Just Fixed It."
+description: "The Navigation API is now Baseline in every browser. How one navigate event replaces click hijacking, popstate, and hand-rolled scroll restoration in SPAs."
+date: "2026-06-11"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/client-side-routing-was-a-hack-the-navigation-api-just-fixed-it.svg"
+tags:
+  - javascript
+  - browser
+  - routing
+  - frontend
+  - web-platform
+---
+
+![Client-Side Routing Was a Hack. The Navigation API Just Fixed It.](/blog-images/client-side-routing-was-a-hack-the-navigation-api-just-fixed-it.svg)
+
+Here's an uncomfortable interview question: explain what React Router actually does when you click a link.
+
+Not the API. The mechanics.
+
+Most senior frontend engineers — people who have shipped SPAs for years — get vague around sentence two. Something about `pushState`. Something about a popstate listener. Then the hand-waving starts.
+
+That's not a knowledge gap to be embarrassed about. It's a symptom of something the ecosystem has quietly agreed not to talk about: client-side routing has never been a real browser capability. It's been a pile of workarounds stacked on an API that was never designed for it. Ian Hickson, the former HTML spec editor, calls `pushState()` his "favourite mistake." The person who shipped the foundation of every SPA router considers it a mistake.
+
+That era just ended. The Navigation API reached Baseline Newly Available in January 2026 — Safari 26.2 shipped support on December 12, 2025, and Firefox 147 closed the loop on January 13, 2026. For the first time, routing is a platform primitive in Chrome, Edge, Firefox, and Safari.
+
+And here's the stance I'll defend: even if you never remove React Router from a single project, you need to understand this API. Routers will be rebuilt on top of it. The "design a client-side router" interview answer just changed. And for small apps, extensions, and internal tools, the correct number of routing dependencies is now zero.
+
+## What your router has been papering over for twelve years
+
+To appreciate the fix, you have to look honestly at the hack. Here's the skeleton of every History-API-based router ever written — including the one inside whatever framework you use today:
+
+```javascript
+// The classic SPA router. Looks reasonable. Is held together with tape.
+
+// Step 1: hijack every link click in the document
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a');
+  if (!link) return;
+
+  // Step 2: hand-roll the guard list, and pray it's complete
+  if (
+    link.origin !== location.origin ||   // external link
+    link.hasAttribute('download') ||     // file download
+    link.target === '_blank' ||          // new tab
+    e.metaKey || e.ctrlKey ||            // cmd/ctrl+click
+    e.shiftKey || e.button !== 0         // shift+click, middle click
+  ) {
+    return; // let the browser handle it... hopefully
+  }
+
+  e.preventDefault();
+  history.pushState({}, '', link.href);  // Step 3: lie to the URL bar
+  renderRoute(link.pathname);            // Step 4: render manually
+  window.scrollTo(0, 0);                 // Step 5: fake scroll behavior
+});
+
+// Step 6: a COMPLETELY SEPARATE code path for back/forward
+window.addEventListener('popstate', () => {
+  renderRoute(location.pathname);
+  // Scroll restoration? Focus management? You're on your own.
+});
+```
+
+Count the failure modes. The guard list is famously never complete — every production router has accumulated edge cases for years. The forward path (clicks) and the backward path (popstate) are two different code paths that must agree but have no mechanism forcing them to. Scroll restoration is your problem. Focus management for screen readers is your problem — and almost nobody does it.
+
+And underneath it all, the History API itself is broken in documented ways: it cannot detect all the things that trigger navigations, it gives you no way to read the full history stack or touch any entry other than the current one, and `popstate` behaves inconsistently — most famously, it does not fire when you call `pushState` or `replaceState` yourself. The API's write path and its event path don't even know about each other.
+
+You didn't build on a foundation. You built on a coincidence that mostly works.
+
+## One event now sees every navigation
+
+The Navigation API's core idea is almost insultingly simple: a single `navigate` event on `window.navigation` that fires for **all** navigation types. Link clicks. Form submissions. Back and forward buttons. Programmatic calls. One listener, one code path.
+
+The same router, rewritten:
+
+```javascript
+navigation.addEventListener('navigate', (event) => {
+  // The browser tells you what it would refuse to let you intercept —
+  // cross-origin links, downloads — instead of you guessing.
+  if (!event.canIntercept || event.downloadRequest !== null) return;
+  if (event.hashChange) return; // same-page anchor, let it be
+
+  const url = new URL(event.destination.url);
+
+  event.intercept({
+    async handler() {
+      await renderRoute(url.pathname);
+    },
+  });
+});
+```
+
+That's the whole thing. No click hijacking. No `preventDefault` guard list. No `pushState` — the browser updates the URL bar and the history stack itself. No separate popstate handler, because back/forward fires the same `navigate` event through the same listener. Scroll and focus restoration are handled by the browser by default, with `scroll: 'manual'` and `focusReset: 'manual'` available when you need control.
+
+Jake Archibald summed up the milestone: "The web now has sensible, low-level routing for navigations." The keyword is *low-level*. This isn't a router. It's the primitive routers should have had in 2012.
+
+## The event tells you everything the click listener had to guess
+
+The `NavigateEvent` carries the context your old guard list was reverse-engineering from DOM state:
+
+- `canIntercept` — the browser's verdict on whether this navigation is yours to handle (cross-origin and cross-document traversals are not)
+- `destination.url` — where the user is going
+- `hashChange` — true for same-page fragment navigations
+- `downloadRequest` — non-null when the link has a download attribute
+- `formData` — non-null for POST form submissions (more on this below)
+- `navigationType` — one of `"reload"`, `"push"`, `"replace"`, or `"traverse"`
+- `signal` — an AbortSignal that fires if the user navigates away mid-load, so you can cancel in-flight fetches for free
+
+That last one deserves a pause. The user clicks a link, your data fetch starts, the user clicks a different link. With the History API you hand-rolled cancellation — or, more honestly, you didn't, and stale responses raced fresh ones. Now you pass `event.signal` to `fetch` and the platform cancels for you.
+
+And the history stack is finally readable. `navigation.entries()` returns a snapshot of the session history; each entry has a stable `key`, a `url`, an `index`, and `getState()`. One sharp edge worth knowing: `getState()` returns a copy. Mutating it does nothing — you persist state through `navigation.navigate()` or `navigation.updateCurrentEntry()`. That will bite someone on your team; better it's not you.
+
+## The 50-line router, and why it's an interview answer now
+
+"Design a client-side router" is a classic senior frontend interview question. Until this year, a strong answer was a tour of the History API's traps. Now a strong answer is this:
+
+```javascript
+// router.js — no dependencies, production-grade semantics
+const routes = [
+  { pattern: new URLPattern({ pathname: '/' }), view: renderDashboard },
+  { pattern: new URLPattern({ pathname: '/invoices/:id' }), view: renderInvoice },
+  { pattern: new URLPattern({ pathname: '/settings' }), view: renderSettings },
+];
+
+function matchRoute(url) {
+  for (const route of routes) {
+    const match = route.pattern.exec(url);
+    if (match) return { ...route, params: match.pathname.groups };
+  }
+  return null;
+}
+
+if ('navigation' in window) {
+  navigation.addEventListener('navigate', (event) => {
+    if (!event.canIntercept || event.hashChange || event.downloadRequest !== null) {
+      return;
+    }
+
+    const route = matchRoute(event.destination.url);
+    if (!route) return; // unmatched: let the browser do a full navigation
+
+    event.intercept({
+      async handler() {
+        const data = await fetchRouteData(route, { signal: event.signal });
+        route.view(route.params, data);
+      },
+    });
+  });
+
+  // One global place for pending UI and errors — no per-route plumbing
+  navigation.addEventListener('navigatesuccess', () => hideLoadingBar());
+  navigation.addEventListener('navigateerror', (e) => {
+    hideLoadingBar();
+    showErrorToast(e.message);
+  });
+}
+// No 'navigation' in window? Do nothing. Links full-page navigate.
+// Your app still works — that's the fallback, and it's a feature.
+```
+
+Notice what the `navigatesuccess` and `navigateerror` events buy you: the intercept handler returns a promise, and the platform routes its outcome to two global events. Loading spinners, error toasts, navigation analytics — one place, every navigation, including back/forward. With the History API, "did the navigation finish?" wasn't even a question the platform could express.
+
+Programmatic navigation got the same upgrade. `navigation.navigate(url)`, `navigation.back()`, `navigation.forward()`, `navigation.reload()`, and `navigation.traverseTo(key)` all return two promises — `committed` (the URL changed) and `finished` (your handler completed). The difference between those two moments is exactly the thing SPA developers have faked with loading state for a decade.
+
+## Async navigations: where the defaults are smarter than your code
+
+Here's the wrong way — and it's wrong in a way that has shipped to production thousands of times:
+
+```javascript
+// Looks fine. Scrolls at the wrong time.
+event.intercept({
+  async handler() {
+    renderSkeleton();
+    const invoice = await fetchInvoice(params.id, { signal: event.signal });
+    renderInvoice(invoice);
+    window.scrollTo(0, 0); // wrong on back/forward — user expects their old position
+  },
+});
+```
+
+Manual `scrollTo(0, 0)` treats every navigation the same. But a back navigation should restore the user's previous scroll position, and a fresh push should go to the top — and if the URL has a fragment, to the fragment. Your code knows none of this. The browser knows all of it.
+
+The right way is to tell the browser *when*, not *where*:
+
+```javascript
+event.intercept({
+  scroll: 'manual',      // don't scroll until I say the content exists
+  focusReset: 'auto',    // move focus appropriately after navigation (a11y win)
+  async handler() {
+    renderSkeleton();
+    const invoice = await fetchInvoice(params.id, { signal: event.signal });
+    renderInvoice(invoice);
+    event.scroll();      // now scroll — correctly, per navigation type
+  },
+});
+```
+
+`event.scroll()` does the right thing for the navigation type: restores position on traversals, goes to top or fragment on pushes. Chrome's docs note the browser may even attempt the scroll multiple times asynchronously to handle late-arriving content. And `focusReset` handles the post-navigation focus move that screen-reader users need and almost no hand-rolled router ever implemented.
+
+This is my second stance, and it's the one people will push back on: **the browser's navigation defaults are now better than your custom code.** The scroll logic you wrote is worse than `event.scroll()`. The focus management you didn't write is worse than `focusReset: 'auto'`. The era of being proud of your bespoke scroll restoration is over.
+
+## The navigation the History API literally could not see
+
+Form submissions are the cleanest proof that the old model was broken. A same-document form POST was invisible to the History API — there was nothing to listen to. Routers dealt with this by ignoring it: you wired `onSubmit`, called `preventDefault`, and did everything by hand, outside the routing system entirely.
+
+The `navigate` event sees it:
+
+```javascript
+navigation.addEventListener('navigate', (event) => {
+  if (event.formData && event.canIntercept) {
+    event.intercept({
+      async handler() {
+        const response = await fetch(event.destination.url, {
+          method: 'POST',
+          body: event.formData,
+          signal: event.signal,
+        });
+        renderResult(await response.json());
+      },
+    });
+  }
+});
+```
+
+A plain HTML `form` element with an action attribute, zero JavaScript on the form itself, progressively enhanced into an SPA interaction by the router. If JavaScript fails to load, the form still posts. This is the architecture progressive-enhancement people have argued for since forever — it just needed the platform to make it possible.
+
+And if you want app-like polish, the API composes with View Transitions: wrap your handler's render in `document.startViewTransition()` and you get animated route changes — viable cross-browser now, with Safari 26.2 also shipping `document.activeViewTransition` and the `:active-view-transition` pseudo-class reaching Baseline in the same January 2026 window.
+
+## So should you use it today?
+
+Honest answer, in three tiers.
+
+**Small apps, internal tools, browser extensions: yes, now.** Feature-detect with `'navigation' in window`, fall back to full page loads, and ship the 50-line router. Full page loads are a perfectly good fallback — that's what makes this adoption path safe in a way most new APIs aren't.
+
+**Production apps on React Router or TanStack Router: not yet, but watch closely.** Both have open discussions about adopting the Navigation API and neither has shipped an integration. When they do, your router's flakiest behaviors — scroll restoration, navigation cancellation, back/forward edge cases — get replaced by platform code. Understanding the primitive now means you'll understand your router's changelog later.
+
+**Know the limits before you commit.** Baseline Newly Available means it works everywhere current, not everywhere your users are — check your support matrix. Safari's implementation currently lacks `precommitHandler`, the hook for running work before the URL changes. Cross-origin navigations and cross-document traversals can't be intercepted. User-initiated back/forward can't be blocked — though the event still fires, which is genuinely useful for analytics. No `navigate` event fires on the initial page load. The API is single-frame. And you still can't programmatically rearrange or delete history entries — the spec repo openly tracks the unsolved "temporary modal entry" case.
+
+None of those are reasons to ignore it. They're the actual contour of the tool, which is more than the History API ever gave you — its limits were undocumented, discovered one production bug at a time.
+
+## The router was never the interesting part
+
+For twelve years, the hardest parts of frontend routing — seeing every navigation, knowing when it finished, restoring scroll and focus correctly — were impossible to do properly, so we ranked routers by how well they faked it.
+
+That competition is over. The faking is now the platform's job, and the platform does it better.
+
+So here's the challenge: before you reach for a router on your next side project or internal tool, write the `navigate` listener yourself. Fifty lines. You'll understand more about how the web actually navigates than years of router configuration taught you — and the next time someone asks you what happens when a user clicks a link in an SPA, you won't hand-wave.
+
+You'll just answer.
