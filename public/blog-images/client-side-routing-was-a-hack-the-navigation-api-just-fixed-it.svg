@@ -41,6 +41,4 @@
     <text x="80" y="517" font-size="58">The Navigation API <tspan fill="#4fd1a5">Just Fixed It.</tspan></text>
   </g>
 
-  <!-- byline -->
-  <text x="80" y="572" font-family="Inter, -apple-system, sans-serif" font-size="22" fill="#8a8aa8">rahuldinkar.com · frontend engineering</text>
 </svg>
