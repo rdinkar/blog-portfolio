@@ -15,7 +15,7 @@ import { serialize } from "next-mdx-remote/serialize";
 const REQUIRED_AUTHOR = "Rahul Dinkar";
 const MIN_WORDS = 1000;
 const MAX_WORDS = 3000;
-const MAX_DESCRIPTION_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 139;
 
 const errors = [];
 const warnings = [];

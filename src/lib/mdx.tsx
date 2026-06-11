@@ -1,5 +1,7 @@
 import fs from "fs";
 import path from "path";
+import { Fragment, isValidElement, cloneElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import matter from "gray-matter";
 import readingTime from "reading-time";
 import { compileMDX } from "next-mdx-remote/rsc";
@@ -75,6 +77,31 @@ export function getAdjacentPosts(slug: string): {
   };
 }
 
+// Medium's "Import a story" tool collapses newline characters inside <pre>,
+// flattening imported code blocks onto a single line. Rendering each line
+// separated by an explicit <br /> keeps the on-site display identical while
+// surviving the import.
+function withExplicitLineBreaks(children: ReactNode): ReactNode {
+  if (typeof children === "string") {
+    const lines = children.replace(/\n$/, "").split("\n");
+    return lines.map((line, i) => (
+      <Fragment key={i}>
+        {i > 0 && <br />}
+        {line}
+      </Fragment>
+    ));
+  }
+  if (isValidElement(children)) {
+    const element = children as ReactElement<{ children?: ReactNode }>;
+    if (typeof element.props.children === "string") {
+      return cloneElement(element, {
+        children: withExplicitLineBreaks(element.props.children),
+      });
+    }
+  }
+  return children;
+}
+
 const mdxComponents: MDXComponents = {
   h1: ({ children }) => (
     <h1 className="text-3xl font-bold mt-8 mb-4 text-[#242424]">
@@ -107,7 +134,7 @@ const mdxComponents: MDXComponents = {
   ),
   pre: ({ children }) => (
     <pre className="bg-[#f6f6f6] p-4 rounded-lg overflow-x-auto mb-4 text-sm">
-      {children}
+      {withExplicitLineBreaks(children)}
     </pre>
   ),
   code: ({ children }) => (
