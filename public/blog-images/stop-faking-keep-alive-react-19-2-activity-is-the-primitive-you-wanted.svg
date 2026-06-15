@@ -1,0 +1,71 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#1f2740"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <linearGradient id="active" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#61dafb"/>
+      <stop offset="100%" stop-color="#3aa8d8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- subtle grid texture -->
+  <g stroke="#2a3350" stroke-width="1" opacity="0.45">
+    <line x1="0" y1="157" x2="1200" y2="157"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="472" x2="1200" y2="472"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+  </g>
+
+  <!-- three lifecycle states as panels -->
+  <g transform="translate(80, 360)">
+
+    <!-- visible -->
+    <g>
+      <rect x="0" y="0" width="300" height="170" rx="14" fill="url(#active)"/>
+      <rect x="22" y="28" width="170" height="14" rx="7" fill="#1a1a2e" opacity="0.55"/>
+      <rect x="22" y="58" width="256" height="10" rx="5" fill="#1a1a2e" opacity="0.3"/>
+      <rect x="22" y="80" width="220" height="10" rx="5" fill="#1a1a2e" opacity="0.3"/>
+      <rect x="22" y="118" width="110" height="34" rx="8" fill="#1a1a2e" opacity="0.55"/>
+      <text x="0" y="-18" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#61dafb" letter-spacing="1">VISIBLE</text>
+    </g>
+
+    <!-- hidden but alive -->
+    <g transform="translate(345, 0)">
+      <rect x="0" y="0" width="300" height="170" rx="14" fill="none" stroke="#61dafb" stroke-width="2.5" stroke-dasharray="9 7" opacity="0.85"/>
+      <rect x="22" y="28" width="170" height="14" rx="7" fill="#61dafb" opacity="0.28"/>
+      <rect x="22" y="58" width="256" height="10" rx="5" fill="#61dafb" opacity="0.18"/>
+      <rect x="22" y="80" width="220" height="10" rx="5" fill="#61dafb" opacity="0.18"/>
+      <rect x="22" y="118" width="110" height="34" rx="8" fill="#61dafb" opacity="0.28"/>
+      <!-- pulse dot: state retained -->
+      <circle cx="270" cy="34" r="6" fill="#61dafb"/>
+      <text x="0" y="-18" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#9fe9ff" letter-spacing="1">HIDDEN · STATE KEPT</text>
+    </g>
+
+    <!-- unmounted -->
+    <g transform="translate(690, 0)">
+      <rect x="0" y="0" width="300" height="170" rx="14" fill="none" stroke="#444b66" stroke-width="2" stroke-dasharray="2 9" opacity="0.7"/>
+      <line x1="60" y1="60" x2="240" y2="110" stroke="#444b66" stroke-width="2" opacity="0.5"/>
+      <line x1="240" y1="60" x2="60" y2="110" stroke="#444b66" stroke-width="2" opacity="0.5"/>
+      <text x="0" y="-18" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="700" letter-spacing="1" fill="#6f7896">UNMOUNTED</text>
+    </g>
+
+    <!-- arrows between states -->
+    <g fill="#61dafb">
+      <path d="M308 85 l28 0 l-7 -7 m7 7 l-7 7" stroke="#61dafb" stroke-width="2.5" fill="none"/>
+      <path d="M653 85 l28 0 l-7 -7 m7 7 l-7 7" stroke="#6f7896" stroke-width="2.5" fill="none"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <g font-family="Inter, -apple-system, sans-serif" fill="#f5f6fa">
+    <text x="80" y="120" font-size="40" font-weight="800" letter-spacing="-0.5">Stop Faking Keep-Alive</text>
+    <text x="80" y="186" font-size="40" font-weight="800" letter-spacing="-0.5">React 19.2's <tspan fill="#61dafb">&lt;Activity&gt;</tspan> is the</text>
+    <text x="80" y="252" font-size="40" font-weight="800" letter-spacing="-0.5">primitive you wanted</text>
+  </g>
+</svg>

@@ -1,0 +1,207 @@
+---
+title: "Stop Faking Keep-Alive: React 19.2's Activity Is the Primitive You Wanted"
+description: "React 19.2's Activity component for keep-alive tabs: how it preserves DOM and state while tearing down Effects, why display:none and store-lifting fail, and when not to use it."
+date: "2026-06-15"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/stop-faking-keep-alive-react-19-2-activity-is-the-primitive-you-wanted.svg"
+tags:
+  - react
+  - performance
+  - frontend
+  - architecture
+---
+
+![Stop Faking Keep-Alive: React 19.2's Activity Is the Primitive You Wanted](/blog-images/stop-faking-keep-alive-react-19-2-activity-is-the-primitive-you-wanted.svg)
+
+You build a settings page with four tabs. Billing, Team, Integrations, Notifications. The user fills out half the Billing form, scrolls down to a long table, then clicks Team to check something.
+
+They come back. The form is blank. The scroll is back at the top. And the network tab shows the same three requests firing again, because the Billing subtree unmounted the moment it left the screen and remounted from scratch when it returned.
+
+You know this bug. You have probably shipped it. And then you have spent an afternoon "fixing" it with one of the usual workarounds, each of which trades one problem for a quieter one.
+
+React 19.2, which shipped on October 1, 2025, finally ships a first-party answer: the `<Activity>` component. It hides a subtree while keeping its state and DOM, and tears down its Effects. That last part is the whole point, and it is exactly what every hand-rolled workaround got wrong.
+
+## You have three workarounds, and each one breaks something specific
+
+Before Activity, keeping a tab "alive" meant picking your poison.
+
+**The `display:none` route.** You render every tab all the time and toggle CSS visibility. State survives, DOM survives, scroll survives. The problem is everything else survives too. The hidden Billing tab is still polling for invoice status every five seconds. The hidden video player keeps playing audio. Subscriptions stay open, timers keep firing, and intersection observers keep observing a thing nobody can see. CSS hides pixels. It does nothing about your Effects.
+
+**The lift-everything-into-a-store route.** You move form values, scroll position, and fetched data into Zustand or Redux so unmounting the tab does not lose anything. This works until it does not. Your store balloons with view-local concerns that have no business being global. And you still lose the DOM, so scroll position, focus, text selection, and uncontrolled input state are gone the moment the component unmounts. You end up reimplementing the DOM's own bookkeeping by hand.
+
+**The conditional-unmount route.** You render only the active tab. This is the honest version, and it is the one in the bug report above. Clean state, no leaks, and a refetch waterfall on every single tab switch.
+
+Notice the pattern. The first preserves too much. The second preserves the wrong things and drops the rest. The third preserves nothing. Nobody was getting the lifecycle right, because React did not give you a tool that drew the line in the correct place.
+
+## What Activity actually does to the lifecycle
+
+`<Activity>` takes a `mode` prop that is either `'visible'` or `'hidden'`. If you omit it, it defaults to `'visible'`.
+
+```jsx
+<Activity mode={activeTab === 'billing' ? 'visible' : 'hidden'}>
+  <BillingPanel />
+</Activity>
+```
+
+When `mode` flips to `'hidden'`, React does two distinct things. It visually hides the children using `display: none`, so the DOM stays in the tree with its scroll position and uncontrolled input values intact. And it cleans up all the children's Effects, conceptually unmounting them, which tears down subscriptions, timers, and polling loops. React state stays in memory the whole time.
+
+When the boundary becomes visible again, React reveals the children with their previous state restored and re-creates their Effects. The polling that you tore down on hide starts again on show.
+
+Hidden children are not frozen, either. They still re-render in response to new props, just at a lower priority than visible content. So a hidden tab stays consistent with the rest of your app without competing for the main thread against the thing the user is actually looking at.
+
+This is the line the workarounds could not draw. DOM and state on one side, Effects on the other. `display:none` keeps the Effects running. Unmounting throws away the DOM and state. Activity keeps what is cheap to keep and tears down what is expensive to leave running.
+
+## The keep-alive tab, the wrong way then the right way
+
+Here is the conditional-render version, the one that looks correct and loses everything.
+
+```jsx
+function SettingsTabs() {
+  const [active, setActive] = useState('billing');
+
+  return (
+    <>
+      <TabBar active={active} onChange={setActive} />
+      {active === 'billing' && <BillingPanel />}
+      {active === 'team' && <TeamPanel />}
+      {active === 'integrations' && <IntegrationsPanel />}
+    </>
+  );
+}
+```
+
+Every switch unmounts the outgoing panel. `BillingPanel` loses its draft form state, its scroll position, and any data it fetched. Switch back and its Effects run again, refetching from zero. For a panel the user bounces in and out of, this is pure waste.
+
+Now wrap each panel in an Activity boundary instead of conditionally rendering it.
+
+```jsx
+function SettingsTabs() {
+  const [active, setActive] = useState('billing');
+
+  return (
+    <>
+      <TabBar active={active} onChange={setActive} />
+      <Activity mode={active === 'billing' ? 'visible' : 'hidden'}>
+        <BillingPanel />
+      </Activity>
+      <Activity mode={active === 'team' ? 'visible' : 'hidden'}>
+        <TeamPanel />
+      </Activity>
+      <Activity mode={active === 'integrations' ? 'visible' : 'hidden'}>
+        <IntegrationsPanel />
+      </Activity>
+    </>
+  );
+}
+```
+
+Switch away from Billing and its half-filled form, its scroll offset, and its fetched data all stay put. Its invoice-polling Effect gets cleaned up, so you are not hammering the server for a tab nobody is viewing. Switch back and the panel reappears exactly as the user left it, with the polling Effect re-created. The user perceives a tab that was always there. Your server sees a client that only polls what is on screen.
+
+That distinction is the part people miss when they reach for `display:none`. Hidden does not mean idle. With CSS hiding, that `setInterval` in `BillingPanel` keeps running for the entire session. With Activity, it is gone the instant the tab goes hidden.
+
+## Pre-rendering the next route, with one large caveat
+
+The second thing Activity unlocks is pre-rendering. When an Activity boundary is hidden during its initial render, its children still render, at lower priority, without mounting their Effects. So you can render the likely-next page ahead of time and have its code and data ready before the user navigates.
+
+```jsx
+function Shell({ currentRoute }) {
+  return (
+    <>
+      <Activity mode={currentRoute === 'dashboard' ? 'visible' : 'hidden'}>
+        <Dashboard />
+      </Activity>
+      {/* Pre-render the page the user is most likely to open next */}
+      <Activity mode={currentRoute === 'reports' ? 'visible' : 'hidden'}>
+        <Reports />
+      </Activity>
+    </>
+  );
+}
+```
+
+Here is the caveat that will bite you if you skip the docs. Activity only pre-fetches Suspense-enabled data sources. That means `lazy`-loaded component code, data from a Suspense-enabled framework like Relay or Next.js, and reading a cached Promise with `use`. It explicitly does not detect data fetched inside an Effect.
+
+So if `Reports` fetches in a `useEffect`, pre-rendering does nothing for your data. The Effects are not mounted while hidden, which is the entire point, so your `useEffect` fetch never runs until the page becomes visible. If you want pre-rendering to actually warm your data, the data has to flow through Suspense. This is the kind of detail that makes someone declare Activity "broken" when it is doing exactly what it promised.
+
+## The background-audio bug nobody warns you about
+
+Because Activity preserves the DOM, side effects that live on DOM elements keep running even when hidden. The textbook offender is a `<video>` that keeps playing audio behind a tab you switched away from. The DOM node survives, so the browser keeps it playing. Your React Effects being torn down does not help, because the browser, not React, is driving the playback.
+
+The fix is to pause it yourself when the subtree hides. Reach for `useLayoutEffect` rather than `useEffect`, because the cleanup is tied to visual hiding and you want it to run synchronously with that.
+
+```jsx
+function VideoCard({ src }) {
+  const videoRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const video = videoRef.current;
+    return () => {
+      // Runs when the Activity hides this subtree.
+      video?.pause();
+    };
+  }, []);
+
+  return <video ref={videoRef} src={src} controls />;
+}
+```
+
+The same warning applies to `<audio>` and `<iframe>`. Anything where the live element keeps doing work after React stops paying attention needs an explicit pause on cleanup. One more thing worth knowing: a hidden Activity that renders only text produces no DOM output at all, because there is no element to hang visibility on. Wrap text you want preserved in an element.
+
+To flush out exactly this class of bug, wrap your app in `<StrictMode>`. It eagerly performs Activity unmounts and mounts, which surfaces unexpected side effects hiding in your hidden subtrees before your users find them.
+
+## useEffectEvent, the companion you will actually use more
+
+React 19.2 also shipped `useEffectEvent`, and it pairs naturally with this lifecycle thinking. The problem it solves is the dependency array that forces an Effect to re-run for the wrong reason.
+
+The canonical case is a chat room that reconnects. You want to reconnect when `roomId` changes. You also want to show a themed notification on connect. So `theme` ends up in the dependency array, and now switching from light to dark mode tears down and rebuilds your socket connection for no reason.
+
+```jsx
+// Wrong: theme in the deps reconnects the socket on every theme change.
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.on('connected', () => {
+      showNotification('Connected!', theme);
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId, theme]);
+  // ...
+}
+```
+
+`useEffectEvent` lets you carve out the part that reads fresh values without making them dependencies. The returned function always sees the latest props and state, and you must not list it in the dependency array.
+
+```jsx
+// Right: theme is read fresh, but only roomId drives reconnection.
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.on('connected', () => {
+      onConnected();
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+  // ...
+}
+```
+
+Now theme changes never touch the socket, and the notification still uses the current theme.
+
+A few rules keep this from turning into a foot-gun. Declare the Effect Event in the same component or Hook as the Effect that uses it. Never put it in a dependency array. And you need `eslint-plugin-react-hooks` at latest, whose v6 rules understand `useEffectEvent` and will not nag you to add it to deps. The React team's own warning is worth repeating: do not wrap everything in `useEffectEvent`, and do not use it just to silence a lint error, because that route leads straight to stale-value bugs. It is a scalpel for the one value that should be read fresh, not a blanket suppressor for an honest dependency.
+
+## My actual stance: Activity is a default, not a wrapper you sprinkle
+
+Here is the line I will defend. `<Activity>` should be your default for an expensive subtree the user is likely to return to. Tabs, wizard steps, the route they came from, the route they are about to open. Anywhere a remount means losing real work or paying for a refetch, Activity is the correct tool and the workarounds are now legacy.
+
+But it is not a free `display:none`, and treating it like one is an anti-pattern. Every Activity wrapper holds memory that would otherwise be garbage collected. The React docs say it plainly: wrapping every tooltip and dropdown in Activity will bloat the browser's memory footprint for no benefit. A dropdown does not need its state preserved across a hundred open-and-close cycles. A tooltip has no expensive Effects to tear down. For those, conditional rendering is still correct, and reaching for Activity is just paying memory rent on state nobody will ever read again.
+
+So the question to ask before wrapping a subtree is not "could this keep its state?" It is "is keeping this subtree alive cheaper than rebuilding it, and will the user actually come back?" If both answers are yes, use Activity. If either is no, unmount it and move on.
+
+The years of `display:none` hacks and store-lifting were not because engineers were careless. They were because React handed you a tree of components and a binary choice: mounted or gone. Activity adds the third state that the problem always needed. Use it where the lifecycle genuinely calls for it, and resist the urge to wrap the whole app in it just because you finally can.
