@@ -1,0 +1,251 @@
+---
+title: "You Don't Have a Prompt Problem, You Have a Layering Problem"
+description: "Claude Code customization: when to use CLAUDE.md, skills, subagents, or hooks. Most reliability bugs are wrong-layer bugs."
+date: "2026-06-15"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/you-dont-have-a-prompt-problem-you-have-a-layering-problem.svg"
+tags:
+  - ai
+  - claude-code
+  - agents
+  - tooling
+  - workflow
+---
+
+![You Don't Have a Prompt Problem, You Have a Layering Problem](/blog-images/you-dont-have-a-prompt-problem-you-have-a-layering-problem.svg)
+
+Your CLAUDE.md is six hundred lines long.
+
+It has a "Testing" section that says, in bold, "ALWAYS run the test suite before claiming a task is done." It has a "Git" section that says "NEVER force-push to main." It has fourteen bullets under "Code Style" that the model honors maybe half the time.
+
+You also have a folder of slash commands you wrote three months ago and forgot the names of. And every time you start a real task, the agent burns context re-reading files, dumps two hundred lines of test output into the thread, then, three turns later, force-pushes to main anyway.
+
+So you add another bullet. ALWAYS, in bold this time. It still happens.
+
+Here is the uncomfortable diagnosis: you don't have a prompt problem. The model isn't ignoring you because your wording is weak. You have a layering problem. You are cramming facts, procedures, isolation, and enforcement into a single file the model is structurally free to deprioritize, when Claude Code gives you four separate layers, each built for one of those jobs.
+
+This is a mechanics post. We'll go through what each layer is, when it's the wrong choice, and the May and June 2026 changes that make the layers compose in ways they didn't a month ago.
+
+## The one-sentence model worth defending
+
+Four layers, four jobs:
+
+- **CLAUDE.md / rules** are facts the model should always know. Cheap if you keep them small, because they sit in context the whole session.
+- **Skills** are procedures the model should know how to run. They load on demand, so a long reference document costs almost nothing until something actually invokes it.
+- **Subagents** are context isolation. A fresh window where verbose work happens, so search results and logs you'll never re-read stay out of your main thread.
+- **Hooks** are deterministic enforcement. They run code, not prose. As the docs put it, "Unlike prompts, which rely on the model's interpretation, hooks execute deterministic code. They cannot hallucinate."
+
+And the stance I'll defend for the rest of this post: the moment you catch yourself writing "always," "never," or "make sure you" in CLAUDE.md and hoping the model complies, you are almost always reaching for the wrong layer. That sentence is either a hook (enforce it in code) or a skill (hand the model the procedure). It is rarely another bullet in a file the model can choose to skim.
+
+## Why CLAUDE.md is a budget, not a junk drawer
+
+CLAUDE.md earns its place when the content is a fact that's true for the whole project and the model needs it loaded all the time. "This repo uses pnpm, not npm." "The API client lives in `src/lib/api`." "Dates are stored as UTC." Cheap to state, and they change the model's default behavior on every turn.
+
+The question to ask: is this always true for the project? Then CLAUDE.md. Is it domain knowledge tied to specific file types? A rule. A repeatable workflow with steps? A skill. Does it need isolation or heavy research? A subagent.
+
+The failure mode is treating CLAUDE.md as where everything that isn't a fact goes to be ignored. Every "always run tests" line is a procedure wearing a fact costume. Every "never run destructive commands" line is an enforcement rule with no teeth, because nothing stops the model from running the command anyway. The file grows, signal-to-noise drops, and the model attends less to all of it.
+
+Keep CLAUDE.md to facts. Push procedures and enforcement to the layers built for them.
+
+## Skills are procedures, and they're nearly free until used
+
+A skill is a `SKILL.md` file with a name, a description, and a body of instructions. Claude reads the description, decides when the procedure is relevant, and runs it. You can also call one directly with `/skill-name`.
+
+The part people miss is the cost model. Skill descriptions load into context so the model knows what's available, but the full body "loads only when it's used, so long reference material costs almost nothing until you need it." This is the opposite of CLAUDE.md, where everything you write is always resident. A two-thousand-line deployment runbook in CLAUDE.md taxes every turn. The same runbook as a skill costs a one-line description until the day someone deploys.
+
+Skills live in three places, with precedence enterprise over personal over project:
+
+- Personal: `~/.claude/skills/<skill-name>/SKILL.md`
+- Project: `.claude/skills/<skill-name>/SKILL.md`
+- Plugin: `<plugin>/skills/<skill-name>/SKILL.md`
+
+If you were a heavy slash-command user, note that custom commands have been merged into skills. A file at `.claude/commands/deploy.md` and a skill at `.claude/skills/deploy/SKILL.md` both create `/deploy` and behave the same way. Existing `.claude/commands/` files keep working, but new procedures belong in `skills/`.
+
+### A skill done right: live data instead of stale prose
+
+Here's the scenario that exposes the difference between a skill and a CLAUDE.md bullet. You want a repeatable "summarize my changes" procedure that always works against the real diff.
+
+The tempting wrong version stuffs guidance into CLAUDE.md: "When asked to summarize changes, run git diff and group the output by area, call out breaking changes," and so on. That text is always loaded, costing tokens on every unrelated turn, and it has no live data. The model still has to remember to run `git diff` and might summarize from memory of files it read earlier.
+
+The right version is a skill with dynamic context injection:
+
+```markdown
+---
+name: summarize-changes
+description: Summarize the working-tree changes for a PR description, grouped by area, flagging breaking changes. Use when the user asks to summarize, describe, or write up their changes.
+allowed-tools: Bash(git diff *), Bash(git status *)
+---
+
+Here is the current diff:
+
+!`git diff HEAD`
+
+Summarize the above. Group changes by area of the codebase. Call out
+any breaking change to a public API explicitly. Keep it under 200 words.
+```
+
+The `!` backtick syntax runs the shell command before the skill content is sent and replaces the placeholder with the output. The docs are precise: "This is preprocessing, not something Claude executes." By the time the model sees the skill, the real diff is already inlined. No "please remember to run git diff," no stale memory. And the description is written for auto-invocation, so the model reaches for it without you typing the command.
+
+A few mechanics worth internalizing. `allowed-tools` "grants permission for the listed tools while the skill is active. It does not restrict which tools are available." So the line above pre-approves those git commands but doesn't take anything else off the table. Removing tools is a different key, and it's new (more on that shortly).
+
+Two lifecycle facts that will bite you. Invoked skill content "enters the conversation as a single message and stays there for the rest of the session. Claude Code does not re-read the skill file on later turns." Edit a skill mid-session and the running session is still using the old copy. That's what `/reload-skills` is for. And after auto-compaction, re-attached skills keep only "the first 5,000 tokens of each" and share "a combined budget of 25,000 tokens," so a sprawling skill loses its tail. Official advice: keep `SKILL.md` under 500 lines and move detailed reference material to separate files.
+
+One more budget: skill descriptions scale at "1% of the model's context window," and the combined description plus when-to-use text is "truncated at 1,536 characters in the skill listing." If descriptions get clipped, the model can't reliably pick the right skill. Run `/doctor` to check, and raise the ceiling with `skillListingBudgetFraction` if you genuinely need it.
+
+## Subagents are for context you'll never look at again
+
+A subagent runs in its own context window with its own system prompt, its own tool access, and independent permissions. You reach for one "when a side task would flood your main conversation with search results, logs, or file contents you won't reference again."
+
+That last clause is the whole point, and it's where the "run the tests" example finally pays off.
+
+### Same job, three wrong layers, one right one
+
+The job: run the test suite and only surface the failures.
+
+Wrong layer one, CLAUDE.md:
+
+```markdown
+## Testing
+ALWAYS run the full test suite before reporting a task complete,
+and report any failures with their error messages.
+```
+
+This is a procedure pretending to be a fact, and it's ignored about half the time. The model is free to decide it already knows the tests pass.
+
+Wrong layer two, a hook that force-runs tests on every Stop event. Deterministic, yes, and it will run the suite. But a hook is blind: it can't read the output, summarize it, or decide which failures matter. You get enforcement and none of the judgment, and the raw output still lands wherever you piped it.
+
+The right layer is a subagent. The verbose output stays in the subagent's context, and only the summary you care about returns to the main thread. The documented prompt is exactly this:
+
+```
+Use a subagent to run the test suite and report only the failing tests
+with their error messages.
+```
+
+The two thousand lines of passing-test noise live and die in the subagent's window. Your main conversation gets a tidy list of failures. That's the trade subagents exist to make.
+
+Subagents are markdown with YAML frontmatter, where the body becomes the system prompt. Only `name` and `description` are required. The optional keys that matter most: `tools`, `disallowedTools`, `model` (defaults to `inherit`), `permissionMode`, `maxTurns`, and `skills`. File precedence runs managed (highest), then the `--agents` CLI flag, then project `.claude/agents/`, then user `~/.claude/agents/`, then plugin agents (lowest).
+
+Three built-ins are worth knowing. Explore runs on Haiku, read-only, for codebase search. Plan inherits your model, read-only, in plan mode. general-purpose has all tools. The cost angle is real: Explore and Plan "skip your CLAUDE.md files and the parent session's git status to keep research fast and inexpensive."
+
+Now the gotchas, because subagents fail in ways that look like the model getting dumber.
+
+A subagent "starts with a fresh, isolated context window. It does not see your conversation history, the skills you've already invoked, or the files Claude has already read." If your subagent depends on a procedure, list it in the `skills` field to preload it. Subagents do not inherit your skills automatically. People burn an afternoon wondering why the subagent "forgot" a skill that was active in the main thread. It never had it.
+
+And the cost cuts both ways. "When subagents complete, their results return to your main conversation. Running many subagents that each return detailed results can consume significant context." Isolation is only a win if the subagent returns a summary. Spawn ten that each dump their full findings back and you've recreated the pollution problem one level up. Route the cheap ones to Haiku to keep the bill down.
+
+## Hooks enforce. Rules only ask.
+
+Everything above is still the model's choice. CLAUDE.md is advice. A skill is a procedure the model elects to run. A subagent is delegation. If you need something to be true regardless of what the model decides, you need a hook.
+
+Hooks fire on lifecycle events and run deterministic code. The event list is long: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `SessionStart`, `SessionEnd`, `PreCompact`, `PostCompact`, `PermissionRequest`, and more, including a new `MessageDisplay` event I'll come back to. Hook types include `command` (a shell command with JSON on stdin), `http` (POST to a URL), `mcp_tool`, `prompt` (a single-turn LLM eval), and an experimental `agent` type.
+
+The contract is exit codes. Exit `0` is success and any stdout JSON is processed. Exit `2` is a blocking error, and on a `PreToolUse` hook that blocks the tool call outright, with stderr shown to Claude so it understands why. Any other exit code is a non-blocking error.
+
+So the "never force-push to main" bullet you keep adding to CLAUDE.md becomes this, in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE 'git push.*(--force|--force-with-lease|[[:space:]]-f([[:space:]]|$))'; then echo 'Blocked: force-push is not permitted' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook receives the event as JSON on stdin, so it reads the actual command with `jq -r '.tool_input.command'` rather than reaching for an env var. The only env var Claude Code documents here is `CLAUDE_PROJECT_DIR`; there is no `$CLAUDE_TOOL_INPUT`, and a guard built on a variable that's always empty fails open, the worst possible way for a guard to fail. With the command read from stdin, a force-push matches the regex, the hook exits 2, and the call is blocked with the reason returned to the model. The push never runs, regardless of how the conversation went. You can also do this through structured JSON, returning `hookSpecificOutput.permissionDecision: "deny"` with a reason, the documented pattern for blocking destructive commands.
+
+Rules ask. Hooks enforce. That's the line to keep in your head.
+
+### Scoping a hook to one subagent
+
+Hooks aren't only global. They can live in skill or agent frontmatter, scoped to while that component is active. This is where the layers start composing into something useful.
+
+Say you have a `db-reader` subagent that should query the database but never write to it. A CLAUDE.md note saying "this agent is read-only" is a wish. Instead, scope a hook to that subagent's lifecycle:
+
+```yaml
+---
+name: db-reader
+description: Answer questions about production data. Read-only. Never mutates.
+tools: Bash
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: ./scripts/validate-readonly-query.sh
+---
+
+You answer questions about the production database. You may run SELECT
+queries only. Summarize results; do not paste full result sets back.
+```
+
+The `validate-readonly-query.sh` script inspects the SQL and exits 2 if it sees `INSERT`, `UPDATE`, `DELETE`, or `DROP`. The write is blocked at the tool boundary, only while that agent is active, by code that cannot be argued out of its decision. That's a guarantee. A bullet in a file is not.
+
+## The May and June 2026 changes that change how this composes
+
+A cluster of releases over the last few weeks changed how these layers fit together. If your mental model predates them, it's stale.
+
+**Skills can now remove tools, not just grant them (v2.1.152, May 27).** Skills and slash commands can set `disallowed-tools` in frontmatter "to remove tools from the model while the skill is active." Previously `allowed-tools` only ever expanded permissions. Now a skill can shrink the toolset for the duration of a sensitive procedure, which is a real enforcement primitive at the skill layer.
+
+**`/reload-skills` (v2.1.152, May 27).** Re-scans skill directories without restarting the session. This is the fix for that lifecycle gotcha: edit a skill, run `/reload-skills`, and the new version is picked up live. Relatedly, `SessionStart` hooks can now return `reloadSkills: true` to re-scan directories, so a hook that installs skills makes them available in the same session.
+
+**The `MessageDisplay` hook event (v2.1.152, May 27).** It "lets hooks transform or hide assistant message text as it is displayed." It runs while text streams and can customize output via `hookSpecificOutput.displayContent`. Redacting secrets from what shows on screen is suddenly a hook concern, not a prompt-please concern.
+
+**Plugins auto-load from `.claude/skills` (v2.1.157, May 29).** Plugins in `.claude/skills` directories load automatically now, no marketplace required, and `claude plugin init <name>` scaffolds a new plugin in `.claude/skills`. Packaging a set of skills for a team got noticeably lighter.
+
+**Nested subagents, up to 5 levels deep (v2.1.172, June 10).** Subagents can now spawn their own subagents, capped at five levels. A background subagent at depth five "does not receive the Agent tool and cannot spawn further," so it can't recurse forever. Useful, and also a new way to detonate your context budget if every level returns verbose results.
+
+One naming note that trips people reading older configs: in v2.1.63 the `Task` tool was renamed to `Agent`. Existing `Task(...)` references still work as aliases, so old setups don't break.
+
+### Composition: a skill that runs in a forked research agent
+
+The cleanest example of the layers working together is a skill that forks into a subagent. A skill with `context: fork` runs in a forked subagent, where the skill content becomes the task prompt. Point it at Explore and you get cheap, isolated research on demand:
+
+```yaml
+---
+name: deep-research
+description: Research how a feature is implemented across the codebase. Use for broad "where and how is X done" questions.
+context: fork
+agent: Explore
+---
+
+Trace how authentication is implemented across the codebase. Find every
+place a session token is created, validated, or invalidated. Return a
+short map of files and responsibilities. Do not paste full file contents.
+```
+
+The procedure (the skill) defines the work. The fork into Explore keeps the verbose grep-and-read churn out of your main thread, and because Explore skips your CLAUDE.md files and git status, the research stays fast and inexpensive. One invocation, three layers cooperating. Forked subagents need Claude Code v2.1.117+, and from v2.1.161 the `/fork` command is on by default. A fork differs from a regular subagent in one important way: it "inherits the entire conversation so far instead of starting fresh," reusing the parent's prompt cache. Reach for a fork when the task needs your current context, a fresh subagent when it should start clean.
+
+## A decision tree you can actually use
+
+When you're about to add something to your setup, ask in this order:
+
+1. Does Claude need access to an external system? That's an MCP server, which is a separate concern from the four layers here.
+2. Is it a fact that's always true for the project? CLAUDE.md. Domain knowledge tied to file types? A rule.
+3. Is it a repeatable workflow with steps the model should know how to run? A skill.
+4. Does it need isolation, a fresh context, or heavy research it shouldn't bring back wholesale? A subagent.
+5. Does it need to be true no matter what the model decides? A hook.
+
+And the anti-patterns, mostly the inverse of putting a job in CLAUDE.md:
+
+- A procedure with steps written as CLAUDE.md prose. Always-loaded and freely ignored. Make it a skill.
+- An "always run X" or "never do Y" rule you're hoping the model honors. Hope isn't enforcement. Make it a hook.
+- A verbose side task running in your main thread. It floods your context with output you'll never reread. Delegate to a subagent.
+- A subagent that "forgot" a skill. Subagents start fresh and don't inherit active skills. Preload via the `skills` field.
+- A two-thousand-line CLAUDE.md, full stop. The model attends less to all of it as it grows. Move procedures to skills and enforcement to hooks until CLAUDE.md is back to a short list of facts.
+
+## The real shift
+
+The reason your agent feels unreliable usually isn't the model and isn't your wording. It's that you've been asking one file to do four jobs, and only one of those is the thing CLAUDE.md is good at.
+
+Next time you reach for a bold "ALWAYS," stop and ask what you actually want. If you want the model to know a fact, leave it. If you want it to follow a procedure, give it the procedure as a skill. If you want verbose work kept out of your sight, send it to a subagent. And if you want a guarantee, write the hook, because that "ALWAYS" in bold is a promise your CLAUDE.md was never able to keep.
