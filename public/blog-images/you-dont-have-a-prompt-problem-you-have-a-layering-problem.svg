@@ -1,0 +1,59 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="#2e2e3f"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.04"/>
+    </pattern>
+    <style>
+      text { font-family: Inter, -apple-system, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- isometric layered stack metaphor: four offset slabs -->
+  <g transform="translate(800 330)">
+    <!-- layer 4: hooks (bottom, enforcement) -->
+    <g transform="translate(0 132)">
+      <polygon points="0,52 150,0 300,52 150,104" fill="#ff7849" opacity="0.9"/>
+      <polygon points="0,52 0,80 150,132 150,104" fill="#d65a30"/>
+      <polygon points="300,52 300,80 150,132 150,104" fill="#b9491f"/>
+    </g>
+    <!-- layer 3: subagents (isolation) -->
+    <g transform="translate(0 88)">
+      <polygon points="0,52 150,0 300,52 150,104" fill="#7c8cff" opacity="0.9"/>
+      <polygon points="0,52 0,80 150,132 150,104" fill="#5b69d6"/>
+      <polygon points="300,52 300,80 150,132 150,104" fill="#4351b9"/>
+    </g>
+    <!-- layer 2: skills (procedures) -->
+    <g transform="translate(0 44)">
+      <polygon points="0,52 150,0 300,52 150,104" fill="#5fd0c5" opacity="0.9"/>
+      <polygon points="0,52 0,80 150,132 150,104" fill="#3fab9f"/>
+      <polygon points="300,52 300,80 150,132 150,104" fill="#2e8b80"/>
+    </g>
+    <!-- layer 1: CLAUDE.md / rules (top, facts) -->
+    <g transform="translate(0 0)">
+      <polygon points="0,52 150,0 300,52 150,104" fill="#f4f1ea" opacity="0.95"/>
+      <polygon points="0,52 0,80 150,132 150,104" fill="#cdc9be"/>
+      <polygon points="300,52 300,80 150,132 150,104" fill="#b3afa3"/>
+    </g>
+
+    <!-- layer labels -->
+    <text x="320" y="56" fill="#f4f1ea" font-size="20" font-weight="600">CLAUDE.md / rules</text>
+    <text x="320" y="100" fill="#5fd0c5" font-size="20" font-weight="600">skills</text>
+    <text x="320" y="144" fill="#7c8cff" font-size="20" font-weight="600">subagents</text>
+    <text x="320" y="188" fill="#ff7849" font-size="20" font-weight="600">hooks</text>
+  </g>
+
+  <!-- title -->
+  <text x="80" y="200" fill="#f4f1ea" font-size="62" font-weight="800" letter-spacing="-1">You don't have a</text>
+  <text x="80" y="272" fill="#f4f1ea" font-size="62" font-weight="800" letter-spacing="-1">prompt problem.</text>
+  <text x="80" y="372" fill="#ff7849" font-size="62" font-weight="800" letter-spacing="-1">You have a</text>
+  <text x="80" y="444" fill="#ff7849" font-size="62" font-weight="800" letter-spacing="-1">layering problem.</text>
+
+  <text x="80" y="520" fill="#9a9ab0" font-size="24" font-weight="500">Four layers, four jobs.</text>
+</svg>
