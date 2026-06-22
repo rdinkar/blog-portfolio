@@ -1,0 +1,174 @@
+---
+title: "Stop Running One Agent at a Time"
+description: "Claude Code parallel agents: subagents, agent view, teams, and dynamic workflows. Pick the right coordination model and what each costs."
+date: "2026-06-22"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/stop-running-one-agent-at-a-time-parallelism-in-claude-code.svg"
+tags:
+  - ai
+  - claude-code
+  - agents
+  - orchestration
+  - workflow
+---
+
+![Stop Running One Agent at a Time](/blog-images/stop-running-one-agent-at-a-time-parallelism-in-claude-code.svg)
+
+You kicked off a task an hour ago. Claude is three hundred lines deep in grep output, reading files you will never look at, and your main thread now reads like a server log. You wanted a summary. You got a transcript.
+
+So you do the obvious thing and open a second terminal. Then a third. Five agents running, five windows, and somewhere in there two of them are editing the same file and quietly clobbering each other's work. Twenty minutes later your Pro plan throws a usage wall and you have nothing merged.
+
+This is where most engineers are right now. Driving one agent by hand, then panicking into raw parallelism the second one session gets slow. Both extremes are wrong. Claude Code shipped a whole tier of coordination this quarter, and the skill is not "run more agents." It is matching the coordination model to the shape of the task, and knowing what each model costs before you reach for it.
+
+I'll defend one claim through the whole post: parallelism is a verification-and-cost trade, not a speed cheat. The bottleneck moved from generating code to reviewing it. Orchestration is the thing worth getting good at. "Autonomy" is mostly branding.
+
+## Four ways to parallelize, and they are not interchangeable
+
+As of mid-2026 Claude Code gives you four distinct approaches: subagents, agent view, agent teams, and dynamic workflows. The docs are blunt about what they have in common: "In every approach the workers are Claude sessions." Same model, same quota, different coordination wiring.
+
+The differences are what matter:
+
+- **Subagents** run in their own context window and return only a summary. You use one when only the result matters and the side work would flood your main thread.
+- **Agent view** (`claude agents`, v2.1.139+, research preview) dispatches background sessions you monitor and check back on. Each one gets its own git worktree automatically, and the sessions survive your terminal closing because a supervisor process runs independently.
+- **Agent teams** (experimental, disabled by default, documented as of v2.1.178) are separate Claude instances that message each other through a mailbox and share a task list. You reach for these only when the workers need to talk.
+- **Dynamic workflows** (research preview, announced around June 1) have Claude write an orchestration script on the fly that fans out into many subtasks, compares results, and iterates until they converge.
+
+If you take one decision rule away, take this: the question is never "how many agents," it is "do the workers need to talk to each other, and does the result need cross-checking." Those two questions sort you into the right mode every time.
+
+## Subagents: when you only want the answer back
+
+The layering case for subagents was context isolation. A fresh window where verbose work happens so logs you will never reread stay out of your main thread. That is still true. But a subagent definition is also a reusable specialist you can keep in the repo, and the frontmatter is where the cost and permission decisions live.
+
+Here is a security reviewer that does real work without the risk surface of a general-purpose agent:
+
+```yaml
+---
+name: security-reviewer
+description: Audit a diff or a set of files for injection, auth, and secret-handling issues. Use when reviewing changes that touch authentication, input parsing, or anything that talks to a database.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+isolation: worktree
+---
+
+You review code for security defects only. Read the changed files,
+trace user-controlled input to where it is used, and flag injection,
+missing authorization checks, and leaked secrets. Report findings as a
+short list with file and line. Do not paste full files back.
+```
+
+Every field is a lever. The `name` is the agent's whole identity; the docs are clear that identity comes only from that field, so it has to be specific. `tools` is an allowlist, which is the right default here: this agent gets Read, Grep, Glob, and Bash, and nothing else exists for it. If you instead listed `disallowedTools`, you would be starting from the full toolset and subtracting, which leaves the door open to whatever Anthropic adds next release. For a reviewer, allowlist. You want the set to be closed.
+
+`model: sonnet` is a cost decision wearing a quality costume. A reviewer reading diffs does not need Opus, and routing it to Sonnet is most of why model tiering works at all. `isolation: worktree` runs the subagent in a temporary git worktree branched from the default branch, and it is auto-cleaned if the agent makes no changes. For a read-only reviewer it costs you nothing and guarantees the agent cannot touch your working tree even if its tool list drifts later.
+
+The trade subagents make is the same one as before. Isolation is a win only if the agent returns a summary. Spawn ten that each dump full findings back into the main thread and you have rebuilt the pollution problem one level up. The last line of that prompt, "do not paste full files back," is not politeness. It is the entire point of the mechanism.
+
+## Agent view: independent tasks you hand off and check later
+
+Sometimes you have three or four jobs that do not depend on each other. Bump a dependency and fix the fallout. Write the migration. Draft the changelog. None of these needs to talk to the others, and you do not want to babysit any of them.
+
+That is agent view. You open it with `claude agents`, dispatch each task, and walk away. Each dispatched session moves into its own worktree automatically, so the dependency bump and the migration are editing separate checkouts and physically cannot collide. The supervisor process keeps them alive after you close the terminal, so you can dispatch before lunch and review after.
+
+The reason worktrees matter so much here is the failure mode they prevent. Two agents, one file, is the single most common way parallel work goes wrong, and it goes wrong silently. Agent view solves it structurally by giving every session a different checkout. Hold that fact, because the next mode does not give it to you for free.
+
+## Agent teams: only when the workers must talk
+
+Agent teams are the mode people overreach for, so let me draw the line hard. You enable them deliberately, because they are experimental and off by default:
+
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+or the same key in your settings.json `env` block. Once on, the architecture is fixed. Your main session is the team lead and that role cannot be transferred. Teammates are separate Claude instances with their own context windows. There is a shared task list with pending, in-progress, and completed states plus dependencies, and a mailbox so teammates can message each other. Teammates cannot spawn nested teams, and there is one team per session.
+
+The thing that justifies all that machinery is the mailbox. If your workers never need to message each other, a team is pure overhead and you should be in agent view. The case where teams genuinely earn it is competing-hypothesis debugging, where you want the workers to argue.
+
+```text
+Enable teams, then prompt the lead:
+
+"We have a memory leak in the checkout flow that only shows up after
+~30 minutes of use. Spin up 3 teammates. Give each a different root-cause
+theory to investigate: (1) a detached DOM node from the cart listener,
+(2) an unbounded cache in the pricing service, (3) a growing subscription
+in the analytics queue. Have them post findings to the task list and use
+the mailbox to try to disprove each other's theory before anyone marks a
+task complete."
+```
+
+One anchored agent investigating a leak commits to its first plausible theory and rationalizes everything afterward. Three teammates with a mailbox can knock each other down. When teammate two finds that the pricing cache is bounded after all, that lands in teammate three's mailbox and kills a branch nobody has to chase. The shared task list keeps them from doing the same work twice, because claiming a task uses file locking to prevent two teammates grabbing it at once.
+
+Two facts about teams will bite you if you skip them. First, teammates load CLAUDE.md, MCP servers, and skills like a normal session, but they do not inherit the lead's conversation history. Whatever context the task needs has to be in the spawn prompt. The leak description above is verbose on purpose; a teammate that does not know which 30-minute symptom you mean starts from nothing. Second, and this is the big one: teams do not isolate teammates in worktrees. Agent view gives you that for free; teams do not. You have to partition files yourself so each teammate owns a different set. Put two teammates on overlapping files and you are back to the silent clobber.
+
+That second fact is exactly why a multi-lens review is the safest team to start with.
+
+## A three-lens PR review, where read-only is the safety net
+
+Reviewing a pull request from several angles at once is the team pattern with the least downside, because review is read-only. Nobody is writing to the files, so the worktree gap stops mattering.
+
+Spin up three teammates on one PR: one on security, one on performance, one on test coverage. Each owns a lane, none of them edit code, and the lead aggregates. The piece that turns this from a demo into something you would actually trust is a quality gate. You do not want a teammate marking its review "done" while the branch is failing lint or tests. That is what the `TaskCompleted` hook is for. Teams expose `TeammateIdle`, `TaskCreated`, and `TaskCompleted` hooks, and an exit code of 2 sends feedback and blocks the action.
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "matcher": "*review*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm lint --silent && pnpm test --run || { echo 'Review cannot be completed while lint or tests fail' >&2; exit 2; }"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+A teammate finishes its security pass and tries to close the task. The hook runs lint and tests. If either fails, exit 2 blocks the completion and the message goes back to the teammate, which now has to reckon with a red build before it can call its work done. The model cannot talk its way past this, the same way a `PreToolUse` hook cannot be argued out of blocking a force-push. Prose asks. Hooks enforce. That line holds at the team layer too.
+
+The task list lives at `~/.claude/tasks/{team-name}/` and persists across the session, while the team config at `~/.claude/teams/{team-name}/config.json` is removed when the session ends. Neither is ever uploaded. The team name is just `session-` plus the first eight characters of the session ID, which is worth knowing the first time you go looking for where your tasks went.
+
+## Dynamic workflows: when the job outgrows a handful of agents
+
+There is a size where teams stop scaling. You are not coordinating five workers anymore, you are running a codebase-wide audit, a 500-file migration, cross-checked research, or a plan drafted from several angles at once. That is the dynamic workflows lane.
+
+Instead of you writing the orchestration, Claude writes a script on the fly, breaks the work into subtasks, runs them in parallel, then "compares and verifies findings, and iterates until results converge." Progress is checkpointed, so an interrupted run resumes instead of starting over. The verification loop is the actual product here. A 500-file migration where each file is migrated once and never cross-checked is not faster, it is a wider blast radius for the same mistake. Convergence is what makes fan-out safe.
+
+If you want the packaged version without hand-rolling anything, `/batch` is a skill that splits one large change into 5 to 30 worktree-isolated subagents that each open a pull request. Worktree-isolated is the operative word again: 30 agents touching one repo without separate checkouts would be chaos, so each gets its own and ships a PR you review independently.
+
+Anthropic's own warning is the one to internalize. Dynamic workflows "can consume substantially more tokens than a typical Claude Code session," and the guidance is to start with small, well-scoped tasks. This is the mode where the cost trade stops being abstract.
+
+## The part nobody priced in
+
+Here is the fact that should govern every decision above. There is no separate billing for agents. Every session, in every mode, draws from the same plan quota at the same rate. As CloudZero puts it plainly: "Running ten agents in parallel uses quota ten times faster."
+
+That changes the math. A single developer running one agent lands around $13 a day. Three parallel agents push that to $30 to $40. Five to ten agents run $50 to $130 a day, which is $1,000 to $2,600 a month per developer, and a ten-developer team at three agents each on the API lands somewhere around $6,000 to $8,000 a month. Parallelism is not free leverage. It is a meter that spins faster.
+
+The cliff is sharper than the daily figures suggest. The Pro plan's five-hour rolling window "drains in under an hour" with five parallel agents, which makes Max 5x or 20x a practical minimum the moment you are serious about running teams. If you have hit a usage wall mid-afternoon and could not figure out why, this is almost certainly it.
+
+There is one lever that genuinely helps, and it is model tiering. An Opus orchestrator with four Sonnet workers costs roughly 40% less than five Opus agents, for output that is usually indistinguishable when the workers are doing contained, well-specified tasks. The orchestrator needs the judgment. The workers reading diffs and running greps do not. This is the same instinct as `model: sonnet` on that security reviewer, applied across a whole team.
+
+## A decision tree you can keep on a sticky note
+
+Before you spin anything up, walk this in order:
+
+1. Does only the result matter, and would the side work flood your thread? A subagent. Route it to Sonnet or Haiku and make it return a summary.
+2. Do you have several independent tasks you want to hand off and check later? Agent view. Worktrees keep them from colliding for free.
+3. Must the workers talk to each other to do the job? An agent team. Partition the files yourself, because teams do not isolate teammates in worktrees, and start with 3 teammates rather than 5. Three focused teammates outperform five scattered ones, at roughly 5 to 6 tasks each.
+4. Has the job outgrown a handful of subagents and does it need cross-verification? A dynamic workflow. Start small and watch the token meter.
+
+And the cases where the answer is "do not parallelize at all," which matter just as much:
+
+- Tasks that are genuinely sequential, where step two needs step one's output. Coordination overhead buys you nothing.
+- Goals too ambiguous for the orchestrator to decompose. It will split the work badly and you will spend more time untangling than you saved.
+- Small, quick changes where spinning up coordination costs more than the change itself.
+- Anything where two agents would touch the same file without separate worktrees. This one is non-negotiable.
+
+## The real shift
+
+A year ago none of this existed. No agent view, no agent teams, no dynamic workflows, no `isolation: worktree`. The reflex from that era, run one agent and steer it by hand, was correct then and is a bottleneck now. But the overcorrection, open five terminals and hope, is worse, because it multiplies your review burden and your bill at the same time without making the work more correct.
+
+The practitioner consensus this quarter is not subtle: workflows matter more than demos, verification is the bottleneck, and orchestration matters more than raw autonomy. The work moved. It moved from typing code to deciding how work gets decomposed, who needs to talk to whom, and how results get cross-checked before you trust them.
+
+So the next time a session gets slow, do not open a second terminal on instinct. Ask the two questions. Do the workers need to talk, and does the result need cross-checking. The honest answer is usually "no" and "a subagent will do," and the discipline to stop there is most of the skill. The rest is knowing that every agent you add is spending the same quota faster, and making it earn its place.
