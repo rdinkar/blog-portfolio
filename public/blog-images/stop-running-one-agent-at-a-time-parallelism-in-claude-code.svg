@@ -1,0 +1,54 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#2a2a2a"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.04"/>
+    </pattern>
+    <style>
+      text { font-family: Inter, -apple-system, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- fan-out metaphor: one origin agent splitting into four parallel tracks -->
+  <g transform="translate(720 0)">
+    <!-- connecting paths from origin to four workers -->
+    <g fill="none" stroke-width="3" stroke-linecap="round">
+      <path d="M120 315 C 230 315, 250 120, 380 120" stroke="#5fd0c5" opacity="0.55"/>
+      <path d="M120 315 C 230 315, 250 250, 380 250" stroke="#7c8cff" opacity="0.55"/>
+      <path d="M120 315 C 230 315, 250 380, 380 380" stroke="#f4f1ea" opacity="0.45"/>
+      <path d="M120 315 C 230 315, 250 510, 380 510" stroke="#ff7849" opacity="0.55"/>
+    </g>
+
+    <!-- origin node -->
+    <circle cx="120" cy="315" r="34" fill="#1a1a1a" stroke="#9a9ab0" stroke-width="3"/>
+    <circle cx="120" cy="315" r="12" fill="#9a9ab0"/>
+
+    <!-- four parallel worker nodes -->
+    <g>
+      <circle cx="400" cy="120" r="26" fill="#1a1a1a" stroke="#5fd0c5" stroke-width="3"/>
+      <circle cx="400" cy="120" r="9" fill="#5fd0c5"/>
+
+      <circle cx="400" cy="250" r="26" fill="#1a1a1a" stroke="#7c8cff" stroke-width="3"/>
+      <circle cx="400" cy="250" r="9" fill="#7c8cff"/>
+
+      <circle cx="400" cy="380" r="26" fill="#1a1a1a" stroke="#f4f1ea" stroke-width="3"/>
+      <circle cx="400" cy="380" r="9" fill="#f4f1ea"/>
+
+      <circle cx="400" cy="510" r="26" fill="#1a1a1a" stroke="#ff7849" stroke-width="3"/>
+      <circle cx="400" cy="510" r="9" fill="#ff7849"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <text x="80" y="210" fill="#f4f1ea" font-size="66" font-weight="800" letter-spacing="-1.5">Stop running</text>
+  <text x="80" y="288" fill="#f4f1ea" font-size="66" font-weight="800" letter-spacing="-1.5">one agent</text>
+  <text x="80" y="366" fill="#5fd0c5" font-size="66" font-weight="800" letter-spacing="-1.5">at a time.</text>
+
+  <text x="80" y="448" fill="#9a9ab0" font-size="24" font-weight="500">Parallelism in Claude Code.</text>
+</svg>
