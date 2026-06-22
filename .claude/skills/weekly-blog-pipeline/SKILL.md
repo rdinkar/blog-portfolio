@@ -1,23 +1,20 @@
 ---
 name: weekly-blog-pipeline
-description: Orchestrates the weekly blog-writing pipeline - researcher, writer, SEO, featured image, and reviewer agents - producing one draft post PR per ISO week. Use when running the weekly blog routine or when asked to generate this week's blog post.
+description: Orchestrates the blog-writing pipeline - researcher, writer, SEO, featured image, and reviewer agents - producing a draft post PR each run. Use when running the weekly blog routine or when asked to generate a blog post.
 ---
 
 # Weekly Blog Pipeline
 
-Produce one new blog post per ISO week as a **pull request** against `main` of `github.com/rdinkar/blog-portfolio`. Never push to main. A missed week is better than a weak post.
+Produce a new blog post as a **pull request** against `main` of `github.com/rdinkar/blog-portfolio`. Never push to main. A skipped run is better than a weak post. Multiple posts per ISO week are allowed.
 
 Repo root: `/Users/rahul.dinkar/Documents/projects/blogs-portfolio`. All steps below run relative to it unless stated otherwise.
 
-## Step 0 — Preflight & idempotency
+## Step 0 — Preflight
 
-1. Compute the ISO week key: `WEEK=$(date +%G-W%V)` and today's date `TODAY=$(date +%Y-%m-%d)`.
+1. Compute the ISO week key: `WEEK=$(date +%G-W%V)` and today's date `TODAY=$(date +%Y-%m-%d)`. `WEEK` is only used to prefix the branch name in Step 8; it does **not** cap how many posts a week can have.
 2. `git fetch origin main` (also verifies network/auth — if this fails, stop and report).
-3. Idempotency check:
-   ```sh
-   gh pr list --state all --limit 100 --json headRefName --jq '.[].headRefName' | grep "^blog/${WEEK}-"
-   ```
-   If any branch matches, **stop immediately**: this week's post already exists (open, merged, or closed). Report "already done for ${WEEK}" and do nothing else. This makes reruns and missed-run-fires-on-launch safe.
+
+Multiple posts per ISO week are allowed, so there is no week-level idempotency gate. Each run picks a fresh topic (Step 2) and produces its own slug and branch; the researcher avoids duplicating existing posts. If a run produces a slug that collides with an existing `blog/${WEEK}-<slug>` branch, Step 8's push will fail — pick a more specific slug and retry rather than overwriting.
 
 ## Step 1 — Isolated workspace
 
