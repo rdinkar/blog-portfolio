@@ -1,0 +1,215 @@
+---
+title: "Your MCP Servers Are Eating the Context Window"
+description: "MCP context window cost: why tool schemas eat your tokens before the first prompt, and three 2026 fixes that cut it 80–98%."
+date: "2026-06-23"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/your-mcp-servers-are-eating-the-context-window.svg"
+tags:
+  - ai
+  - mcp
+  - agents
+  - tooling
+  - context
+---
+
+![Your MCP Servers Are Eating the Context Window](/blog-images/your-mcp-servers-are-eating-the-context-window.svg)
+
+You connect GitHub, Slack, and Sentry to your coding agent because each one obviously helps.
+
+Then you open a session and watch 143,000 of your 200,000 tokens disappear before you type a single character.
+
+Seventy-two percent of the window, gone. Not on your task. Not on the codebase. On tool definitions the agent loaded just in case you might ask it to file a Sentry issue or post to a channel. Three servers, roughly forty tools, and the agent is already two-thirds full of schemas it will mostly never use this session.
+
+This is the part nobody warns you about when they tell you to install all the MCP servers. The advice treats tools as free, and they are not. Every tool you wire up is resident context, paid for on every turn, whether the model touches it or not. At a certain point connecting more servers makes the agent measurably worse, and there is a number where that flips.
+
+This post is about the number, and about three patterns that matured over the last few months that change the math: Tool Search, code execution with MCP, and output compaction. The stance I will defend is simple. MCP is a context-budget problem, and you should treat tool wiring the way you treat bundle size. You should measure it, lazy-load it, and prune it without sentiment.
+
+## What a single tool actually costs you
+
+A tool definition is not a name and a one-liner. It is the name, a description written for a model, a full JSON schema, field-level descriptions, enums, and often a block of system instructions about when to call it.
+
+Add that up and one well-documented tool runs around 1,000 tokens. The field descriptions alone are about 400. Type definitions add roughly 300. Nested object structure another 300. A lean tool might come in near 550; a verbose one with example payloads pushes past 1,400.
+
+Now multiply. A 50-tool server costs somewhere between 25,000 and 75,000 tokens. The GitHub MCP server on its own initializes at around 55,000 tokens, with one autopsy putting roughly 42,000 of that in JSON Schema, argument types, and example payloads. Add Jira and you are paying another 17,000. A Claude Code session with five to ten servers connected typically burns 50,000 to 67,000 tokens before you type a first prompt, and a full enterprise stack of five to ten servers runs 100,000 to 200,000 tokens of pure overhead.
+
+This is not a hypothetical inefficiency the spec authors are ignoring. There is an open issue on the MCP repo, #2808, titled "MCP spec should address tool schema token overhead (~1000 tokens/tool consumed per session)." The people maintaining the protocol know.
+
+And the cost is not only the window. At Claude Opus 4.5 pricing, that resident overhead works out to roughly $3.75 per developer per day, about $1,370 a year each. Run a hundred developers and you are looking at $137K a year spent re-sending tool schemas. A thousand developers, $1.4M. You are paying real money to keep definitions in context that the model reads past on most turns.
+
+## The second tax: results that pass through the model twice
+
+Schema bloat is the cost you pay at startup. There is a second, sneakier cost you pay while the agent works, and it is often larger.
+
+Walk through a normal chained task. You ask the agent to take a meeting transcript from Google Drive and attach a summary to a Salesforce lead. The naive MCP version looks like this:
+
+```ts
+// The agent calls tools directly, and every result flows back through context.
+
+// 1. Fetch the transcript. The ENTIRE 2-hour transcript is now a tool
+//    result in the model's context window.
+const transcript = await gdrive.getDocument({ documentId: "1a2b3c" });
+
+// 2. The model reads it, summarizes, and to call the next tool it must
+//    emit the summary as an argument. The transcript content effectively
+//    passes through context a second time on the way out.
+await salesforce.updateLead({
+  leadId: "00Q5f000",
+  notes: summarize(transcript), // model-generated, but transcript was resident to produce it
+});
+```
+
+The problem is structural. Intermediate results round-trip through the model. The transcript gets pulled into context to be read, then the relevant pieces flow through context again as the model constructs the next call. A two-hour transcript can add about 50,000 tokens this way, and the model never needed to see most of it. It needed to move data from one system to another and keep a summary.
+
+This is where chained tool calls quietly bankrupt you. Ten tool calls at 500 tokens of output each is 5,000 tokens of intermediate results, and that is a small example. Real workflows that query, filter, transform, and summarize across a few systems blow past that fast.
+
+## Fix one: stop loading every schema upfront
+
+The highest-leverage change requires almost nothing from you, because it is now built into the protocol behavior rather than something you hand-roll.
+
+Tool Search replaces upfront schema loading with a single function. Instead of registering forty tools and paying for forty schemas, you register one `search_tools(query)` call. The agent describes what it needs, retrieval runs over the tool descriptions, and only the two to five most relevant full schemas come back, loaded on demand.
+
+The registration difference is the whole idea:
+
+```ts
+// Before: 40 tools, ~40 full schemas resident for the whole session.
+registerTools([
+  githubCreateIssue, githubListPRs, githubMergePR, /* ...37 more */
+]);
+
+// After: one entry point. Schemas load only when retrieval surfaces them.
+registerTool({
+  name: "search_tools",
+  description: "Find the right tool for a task. Returns the 2–5 best-matching tool schemas.",
+  inputSchema: {
+    type: "object",
+    properties: { query: { type: "string" } },
+    required: ["query"],
+  },
+});
+
+// The agent does this when it actually needs to act:
+//   search_tools({ query: "open a pull request against the api repo" })
+// → returns the full schema for githubOpenPR (and a couple of neighbors), nothing else.
+```
+
+The savings are large. Lazy loading drops a 100-tool server from about 50,000 tokens to about 2,000, a 96% reduction, and across reported cases the schema-related saving lands in the 80–95% range. Tool Search reached GA in February 2026 with citations around 85% token reduction. If you do one thing after reading this, it is this one.
+
+The tradeoffs are real and you should know them before you flip it on. The first action in a session pays a latency cost, because retrieval has to run before the agent can call anything. And retrieval can miss. If your tool is named `dispatch_workflow` and the model searches for "run the deploy job," the embedding may not connect them, and the agent will act like the tool does not exist. You fix this by writing descriptions in the language the model will search in, expanding synonyms, and tuning retrieval when you see misses. Tool Search trades a small, recurring retrieval risk for a massive, constant token saving. On any non-trivial stack that trade is worth making.
+
+## Fix two: let the agent write a script instead of chaining calls
+
+Tool Search attacks the startup tax. Code execution attacks the round-trip tax, and it is the bigger win when your workflow moves data around.
+
+The pattern, from Anthropic's November 2025 engineering work, is to present MCP servers as a filesystem instead of a flat list of tools. Each server becomes a directory. Each tool becomes a file the agent can read to learn the signature. Discovery is progressive: the agent explores the filesystem and loads a definition only when it decides to use that specific tool.
+
+```
+./servers/
+  google-drive/
+    getDocument.ts
+    listFiles.ts
+  salesforce/
+    updateLead.ts
+    findLead.ts
+```
+
+Then the agent writes a script that runs in the execution environment, calling those tools as ordinary functions. The transcript-to-Salesforce task becomes this:
+
+```ts
+import { getDocument } from "./servers/google-drive/getDocument.ts";
+import { updateLead } from "./servers/salesforce/updateLead.ts";
+
+const transcript = await getDocument({ documentId: "1a2b3c" });
+
+// This runs in the execution environment, NOT in the model's context.
+// The full transcript never enters the window.
+const summary = transcript
+  .split("\n")
+  .filter((line) => line.startsWith("ACTION:"))
+  .slice(0, 20)
+  .join("\n");
+
+await updateLead({ leadId: "00Q5f000", notes: summary });
+
+// Only this returns to the model.
+console.log("Lead 00Q5f000 updated with 20 action items.");
+```
+
+Look at where the 50,000-token transcript goes now: nowhere near the model. It is fetched, filtered, and consumed inside the execution environment. Only the final one-line confirmation returns to context. On Anthropic's example workload this collapsed token usage from 150,000 to 2,000, a 98.7% saving. The savings scale with how much intermediate data you were round-tripping; for chained query-filter-transform-summarize work, 80–90% is typical.
+
+There are two further wins worth naming. Intermediate results stay in the execution environment by default, so sensitive data can be tokenized before the model ever sees it, which matters when the transcript contains PII. And the agent can persist a script it found useful as a reusable skill, so the next run of this workflow does not re-derive the logic.
+
+Now the honest limit, because this is where people over-apply it. Code execution is best for sequential, deterministic pipelines where the steps are known: fetch, filter, transform, write, summarize. It is the wrong tool when the model genuinely needs to see an intermediate result before deciding what to do next. If step three depends on the model reading the output of step two and reasoning about it, hiding that output in the execution environment defeats the point. You moved the data out of context precisely so the model would not look at it, and now the model needed to look at it. Use code execution for the deterministic middle of a pipeline, not for the parts where judgment lives.
+
+## Fix three: shrink the outputs you do return
+
+The third lever is smaller and complements the other two. Even when a result must come back to the model, most of it is noise.
+
+Take a calendar lookup. The raw tool response is a wall of nested objects, nulls, and empty arrays:
+
+```json
+{
+  "event": {
+    "id": "evt_88f21",
+    "summary": "Sprint planning",
+    "description": null,
+    "location": "",
+    "start": { "dateTime": "2026-06-24T10:00:00Z", "timeZone": "UTC" },
+    "end": { "dateTime": "2026-06-24T10:30:00Z", "timeZone": "UTC" },
+    "attendees": [
+      { "email": "rahul@example.com", "responseStatus": "accepted", "optional": false, "comment": null },
+      { "email": "priya@example.com", "responseStatus": "tentative", "optional": false, "comment": null }
+    ],
+    "reminders": { "useDefault": true, "overrides": [] },
+    "conferenceData": null
+  }
+}
+```
+
+That is about 180 tokens, and the model needed maybe four facts out of it. Define a compact output contract that returns only what the task uses:
+
+```
+Sprint planning | 2026-06-24 10:00–10:30 UTC
+attendees: rahul (accepted), priya (tentative)
+```
+
+That is roughly 60 tokens, a two-thirds cut, with nothing the model actually reasons over removed. Output compaction generally buys 50–70%.
+
+The failure mode here is the inverse of the win. Compress too aggressively and you strip a field the model needed, and it either reasons incorrectly from the gap or calls the tool again to fetch what you dropped. A repeated tool call costs more than the field you saved. The contract should drop nulls, empty arrays, and fields the task never reads. It should not drop a field because it looked optional in the moment. Compaction is a scalpel, not a compactor.
+
+## So how many servers should you connect?
+
+Here is the decision rule, and it is deliberately conservative.
+
+Start with two to three servers, scoped to the task in front of you. Treat five to seven as a hard ceiling. Past that you hit a problem that token math does not capture: too many tools creates a decision problem. The agent spends more time choosing which tool to use and makes more wrong choices. You are not just paying tokens for the extra schemas, you are degrading selection quality. A pruned config with the two servers the task needs beats a maximal config with ten, both on cost and on correctness.
+
+Concretely, prune by scope. If today's work is a GitHub PR review, you do not need the Slack and Sentry tools resident. Wire the two that the task touches:
+
+```jsonc
+// Before: kitchen-sink config. ~143K tokens resident before any prompt.
+{
+  "mcpServers": {
+    "github": { "command": "mcp-github" },  // ~55K tokens
+    "slack":  { "command": "mcp-slack" },    // ~40 tools, large
+    "sentry": { "command": "mcp-sentry" }    // adds the rest
+  }
+}
+
+// After: task-scoped to the PR-review workload.
+{
+  "mcpServers": {
+    "github": { "command": "mcp-github" },
+    "sentry": { "command": "mcp-sentry" }   // you actually triage failures here
+  }
+}
+```
+
+Then layer the optimizations by what the workload looks like. Turn on Tool Search whenever you are past a couple of servers, because the schema saving is constant and the only cost is first-call latency. Reach for code execution when the workload moves data between systems and round-trips intermediate results, which is exactly where the 150K-to-2K reductions come from. Apply output contracts on the verbose tools whose responses you keep paying for. Each fix targets a different line item, and you do not need all three on every workflow.
+
+It is worth saying that this is the protocol's own trajectory, not a workaround that will age out. The 2026 MCP roadmap, published March 9, names "Transport Evolution & Scalability" as a top priority and moves the spec toward a stateless protocol core, with the final 2026 spec shipping July 28. The ecosystem it is scaling for is enormous: by its first anniversary in November 2025, MCP was reportedly seeing around 97 million monthly SDK downloads across 10,000-plus deployed servers, with OpenAI, Google DeepMind, Microsoft, and AWS on board. Token economics is not a fringe concern at that scale; it is the bottleneck the whole ecosystem is now optimizing against.
+
+## The instinct to build
+
+The reason the "install everything" advice feels right is that each server, viewed alone, is a clear win. The cost only shows up in aggregate, on a turn you are not thinking about, in a window you cannot see filling.
+
+So make it visible. Before you add the fifth server, open a fresh session and read the token count before you type. If a quarter of your window is gone, you already have your answer. The discipline that keeps your bundle under control is the same discipline that keeps your agent sharp: every dependency earns its place, and the ones that do not get cut.
