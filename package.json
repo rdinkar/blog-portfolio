@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "stats:ingest": "node scripts/ingest-stats.mjs",
+    "stats:priors": "node scripts/gen-priors.mjs",
+    "stats:update": "node scripts/ingest-stats.mjs && node scripts/gen-priors.mjs"
   },
   "dependencies": {
     "@next/mdx": "^16.1.6",

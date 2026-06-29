@@ -36,6 +36,8 @@ All file work (post, image, validation) happens inside `$WORKDIR`. The `node_mod
 
 Dispatch the **blog-researcher** agent. Pass it: the workdir path and today's date. It returns a research brief (topic, rationale, nearest existing post, suggested angle, sourced facts sheet, code-worthy scenarios, sources). Keep the full brief — later steps need it.
 
+The researcher weights topic selection using `PERFORMANCE_PRIORS.md` (data-derived lane ranking from real Medium stats). Those priors are refreshed monthly via the performance feedback loop — see [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) (`npm run stats:update` after pasting the latest stats). Keeping it current is what makes topic selection improve over time.
+
 ## Step 3 — Write
 
 Dispatch the **blog-writer** agent. Pass it: the workdir path, today's date (`TODAY`) for frontmatter, and the FULL research brief verbatim. It writes `content/blog/<slug>.mdx` in the workdir and reports the slug, title, and word count.

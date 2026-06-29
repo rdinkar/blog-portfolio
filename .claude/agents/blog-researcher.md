@@ -17,6 +17,8 @@ The blog serves senior engineers (SDE2+), with frontend as the home turf. Posts 
 
 ### Lane weighting (ranked by what actually performs)
 
+**First, read `.claude/skills/weekly-blog-pipeline/PERFORMANCE_PRIORS.md` if it exists** (it is regenerated monthly from real Medium stats). Its data-derived lane ranking, top earners, and worst-read-through lists **supersede the seeded guidance below** — use its ranking order to weight your pick, and study its "what earns" / "what flops" examples for title and angle shape. The text below is the fallback seed for when that file is absent or stale.
+
 Weighting is driven by historical Medium performance, not by hype. Ranked by earnings-per-post and read-through (reads ÷ views), the lanes perform roughly:
 
 1. **Frontend interview prep (machine coding, system design, deep JS questions) — TOP LANE.** Highest earnings per post and strong, durable reach. Default here.
