@@ -1,0 +1,780 @@
+Story	Presentations
+
+Views	Reads	Earnings
+Your MCP Servers Are Eating the Context Window
+·
+9 min read
+·
+Jun 23, 2026
+·
+View story
+372
+8
+3
+$0.29
+Stop Running One Agent at a Time
+·
+11 min read
+·
+Jun 22, 2026
+·
+View story
+381
+8
+5
+$0.15
+You Don't Have a Prompt Problem, You Have a Layering Problem
+·
+13 min read
+·
+Jun 15, 2026
+·
+View story
+369
+6
+2
+$0.47
+Client-Side Routing Was a Hack. The Navigation API Just Fixed It.
+·
+9 min read
+·
+Jun 11, 2026
+·
+View story
+379
+19
+7
+$0.05
+This Is What a 10x AI Workflow Actually Looks Like (From a Senior Engineer's Setup)
+·
+5 min read
+·
+Apr 4, 2026
+·
+View story
+1.6K
+546
+315
+$0.84
+If Your AI Keeps Repeating Mistakes, Your System Is Broken
+·
+4 min read
+·
+Mar 26, 2026
+·
+View story
+527
+38
+18
+$0.42
+Your AI Is Bad Because Your Codebase Has No Rules
+·
+4 min read
+·
+Mar 19, 2026
+·
+View story
+751
+236
+152
+$0.15
+Rules AI Must Follow in Your Codebase
+·
+5 min read
+·
+Mar 12, 2026
+·
+View story
+1K
+418
+205
+$0.36
+Designing Frontend Systems with AI in the Loop (What Changes, What Doesn't)
+·
+6 min read
+·
+Mar 5, 2026
+·
+View story
+996
+214
+80
+$0.86
+Using AI for Frontend Performance Debugging: Practical Wins and Hard Limits
+·
+4 min read
+·
+Feb 26, 2026
+·
+View story
+2.9K
+664
+299
+$2.06
+AI in Frontend Code Reviews: What to Automate and What Never to Delegate
+·
+5 min read
+·
+Feb 19, 2026
+·
+View story
+925
+157
+57
+$0.37
+How Senior Frontend Engineers Actually Use AI at Work
+·
+4 min read
+·
+Feb 12, 2026
+·
+View story
+13.9K
+2.8K
+1.4K
+$10.59
+How Senior Frontend Engineers Approach Code Reviews
+·
+4 min read
+·
+Feb 5, 2026
+·
+View story
+1.99K
+615
+287
+$1.72
+Explaining the Browser Rendering Pipeline in Interviews
+·
+3 min read
+·
+Jan 29, 2026
+·
+View story
+4.8K
+911
+409
+$2.34
+JavaScript Memory Management for Frontend Engineers
+·
+5 min read
+·
+Jan 15, 2026
+·
+View story
+5.6K
+1.3K
+693
+$4.06
+How React Performance Actually Fails at Scale
+·
+5 min read
+·
+Jan 5, 2026
+·
+View story
+1.3K
+270
+136
+$0.94
+One Year of Writing About Frontend Engineering: What Actually Moved the Needle
+4 min read
+·
+Jan 2, 2026
+·
+View story
+601
+119
+55
+$0.07
+How to Build AI-Assisted UIs: Architecture Patterns for Frontend Engineers
+·
+4 min read
+·
+Dec 15, 2025
+·
+View story
+1.5K
+601
+321
+$1.55
+The JavaScript Execution Model Explained for Senior Engineers
+·
+5 min read
+·
+Dec 11, 2025
+·
+View story
+1.4K
+459
+235
+$1.03
+Machine Coding Round: Build a Real-time Task Board (Like Trello) Step by Step
+·
+4 min read
+·
+Dec 8, 2025
+·
+View story
+8.4K
+398
+170
+$0.94
+Why Your React Animations Feel Janky (and How to Fix It Without Rewriting UI)
+·
+5 min read
+·
+Dec 4, 2025
+·
+View story
+1K
+401
+137
+$0.51
+Frontend System Design: Build a High-Performance Data Explorer (Like Notion Tables)
+·
+6 min read
+·
+Dec 1, 2025
+·
+View story
+6.5K
+1.4K
+605
+$2.92
+Patterns for Massive Forms in React: Scalable, Performant and Maintainable
+·
+5 min read
+·
+Nov 27, 2025
+·
+View story
+9K
+1.8K
+882
+$4.88
+Why Large React Codebases Rot Fast (and How to Stop It)
+·
+6 min read
+·
+Nov 24, 2025
+·
+View story
+395
+34
+8
+$0.09
+Why Your React App Feels Slow: 7 Hidden Bottlenecks (and How to Fix Them)
+·
+3 min read
+·
+Nov 20, 2025
+·
+View story
+902
+346
+193
+$0.82
+Patterns for Managing Shared State Across Microfrontends
+·
+5 min read
+·
+Nov 17, 2025
+·
+View story
+2.6K
+820
+396
+$2.30
+Your app passes Lighthouse but still feels janky? Here's why.
+·
+4 min read
+·
+Nov 13, 2025
+·
+View story
+779
+50
+16
+$0.08
+Machine Coding Round: Spreadsheet Editor (Formulas, Undo, Copy-Paste)
+·
+4 min read
+·
+Nov 10, 2025
+·
+View story
+890
+182
+77
+$0.83
+How React Handles Concurrency in 2025 (and Why It Matters for You)
+·
+5 min read
+·
+Nov 6, 2025
+·
+View story
+628
+263
+115
+$0.43
+Building a Plugin System in React: Design, Isolation, and Communication
+·
+5 min read
+·
+Nov 3, 2025
+·
+View story
+1.5K
+761
+336
+$1.29
+The Untold Story of React's Commit Phase (Deep Dive into Fiber Internals)
+·
+4 min read
+·
+Oct 30, 2025
+·
+View story
+969
+288
+107
+$0.84
+Machine Coding Round: Build a Realtime Whiteboard (with WebSockets + Canvas)
+·
+4 min read
+·
+Oct 27, 2025
+·
+View story
+3.9K
+398
+156
+$1.01
+Frontend Interview Series: How to Explain React Fiber Like a Pro
+·
+3 min read
+·
+Oct 23, 2025
+·
+View story
+13.3K
+2.1K
+968
+$8.23
+Machine Coding Round: Build a Real-time Chat App (Step by Step)
+·
+3 min read
+·
+Oct 20, 2025
+·
+View story
+622
+136
+60
+$0.58
+Web Workers vs. WASM: When to Use Which for Performance
+·
+3 min read
+·
+Oct 16, 2025
+·
+View story
+7K
+1.3K
+679
+$4.38
+The Future of React State Management: Beyond Redux and Context
+·
+4 min read
+·
+Oct 13, 2025
+·
+View story
+1K
+418
+253
+$0.87
+Top 5 JavaScript Interview Challenges in 2025 (With Code Solutions)
+·
+2 min read
+·
+Oct 9, 2025
+·
+View story
+2.8K
+574
+288
+$2.39
+System Design for Frontend Engineers: Building a Scalable Dashboard
+·
+3 min read
+·
+Oct 6, 2025
+·
+View story
+316K
+6.3K
+2.5K
+$9.48
+React Performance Debugging: Tools and Techniques That Actually Work
+·
+3 min read
+·
+Oct 2, 2025
+·
+View story
+3.1K
+792
+407
+$2.55
+Advanced JavaScript Gotchas: What Senior Developers Still Get Wrong
+·
+3 min read
+·
+Sep 29, 2025
+·
+View story
+3.1K
+852
+502
+$3.49
+Machine Coding Round: Squid Game (Red Light Green Light)
+·
+4 min read
+·
+Sep 15, 2025
+·
+View story
+1K
+128
+58
+$0.53
+Machine Coding Round: Searchable File / Folder Structure
+·
+3 min read
+·
+Sep 6, 2025
+·
+View story
+855
+158
+67
+$0.68
+Understanding and Implementing Webpack's Module Federation: A Practical Guide
+·
+5 min read
+·
+Aug 26, 2025
+·
+View story
+397
+353
+93
+$0.27
+Why Cold Emailing Beats Job Boards (And How to Do It Right)
+·
+4 min read
+·
+Aug 5, 2025
+·
+View story
+60
+25
+7
+-
+How to Build a Dynamic Table: A Machine Coding Round Challenge
+·
+5 min read
+·
+Jul 22, 2025
+·
+View story
+719
+147
+64
+$0.57
+How to Center a Div in 2025
+·
+5 min read
+·
+Jul 19, 2025
+·
+View story
+1K
+613
+212
+$1.83
+SOLID Principles in React: The Frontend Engineer's Secret Weapon
+·
+5 min read
+·
+Jul 17, 2025
+·
+View story
+11.4K
+3.5K
+1.2K
+$12.51
+Advanced React Interview Questions: DOM Manipulation and Web APIs
+·
+3 min read
+·
+Jul 16, 2025
+·
+View story
+342
+74
+27
+$0.26
+React Fiber Unveiled: The Secret Sauce Behind Modern React Performance 🚀
+·
+5 min read
+·
+Jul 9, 2025
+·
+View story
+2K
+375
+142
+$1.73
+Mastering JavaScript Decorators
+·
+4 min read
+·
+Jul 7, 2025
+·
+View story
+3.5K
+1.1K
+228
+$1.06
+Mastering JavaScript Function Composition
+·
+5 min read
+·
+Jul 2, 2025
+·
+View story
+1.5K
+383
+208
+$0.61
+Frontend Security Best Practices: Protecting Your Users and Your App
+·
+8 min read
+·
+Jun 28, 2025
+·
+View story
+477
+187
+63
+$0.80
+React Render Props vs. Higher-Order Components: A Deep Dive
+·
+4 min read
+·
+Jun 25, 2025
+·
+View story
+2.3K
+395
+213
+$1.22
+Modern Frontend Architecture Patterns
+·
+5 min read
+·
+Jun 22, 2025
+·
+View story
+9.5K
+2.8K
+1.1K
+$11.57
+The Ultimate Guide to JavaScript Event Loop and Asynchronous Programming: Ace Your Frontend…
+·
+4 min read
+·
+Jun 18, 2025
+·
+View story
+369
+97
+40
+$0.24
+Ace Your Next React Interview: Top 10 Common Questions and How to Crush Them 🚀
+·
+5 min read
+·
+Jun 17, 2025
+·
+View story
+2.8K
+260
+111
+$1.33
+JavaScript Design Patterns for Frontend Developers
+·
+4 min read
+·
+Jun 16, 2025
+·
+View story
+10K
+1.8K
+813
+$7.64
+Advanced Frontend Interview Challenge: Implementing a Queue Manager
+·
+4 min read
+·
+Apr 13, 2025
+·
+View story
+2K
+815
+317
+$3.94
+Frontend Interview Challenge: Solving the Chess Queen Movement
+·
+5 min read
+·
+Apr 6, 2025
+·
+View story
+1.5K
+339
+157
+$2.14
+Frontend Coding Interview Questions: 7 JavaScript Challenges Companies Ask
+·
+3 min read
+·
+Mar 22, 2025
+·
+View story
+10.1K
+2.5K
+1.1K
+$12.85
+Javascript Tricky Interview Questions: The Gotchas That Could Make or Break Your Next Interview
+·
+4 min read
+·
+Mar 16, 2025
+·
+View story
+3.4K
+1K
+632
+$10.38
+How I built the viral calendar puzzle game 🎮
+·
+5 min read
+·
+Mar 9, 2025
+·
+View story
+438
+81
+28
+$0.14
+How to Upgrade Libraries Without Breaking Your Codebase: The Module Aliasing Technique
+·
+5 min read
+·
+Feb 28, 2025
+·
+View story
+5.8K
+1.4K
+778
+$8.87
+The Truth About React Context and Rerenders: It's Not What You Think
+·
+4 min read
+·
+Feb 22, 2025
+·
+View story
+706
+220
+100
+$0.75
+Tired of Double Logins? Build a Real-time Auth Sync Between Your Web App and Chrome Extension 🔄
+·
+5 min read
+·
+Feb 14, 2025
+·
+View story
+486
+241
+89
+$0.32
+Web Workers: The Secret to Smooth JavaScript Performance
+·
+6 min read
+·
+Feb 7, 2025
+·
+View story
+12.4K
+2.7K
+1.1K
+$30.32
+Mastering React Performance Optimization: A Comprehensive Guide
+·
+5 min read
+·
+Feb 1, 2025
+·
+View story
+1.5K
+346
+125
+$2.81
+Are You Overusing Effects? Let's Write Better React Together
+·
+6 min read
+·
+Jan 19, 2025
+·
+View story
+696
+234
+78
+$0.90
+Optimizing React Performance: Advanced Techniques
+4 min read
+·
+Jan 12, 2025
+·
+View story
+1.96K
+519
+285
+-
+Building Custom React Hooks: A Practical Guide with Real-World Examples
+3 min read
+·
+Jan 7, 2025
+·
+View story
+452
+62
+31
+-
+Managing State in a Multi-Tabbed Application: Our Journey from Redux to Zustand
+8 min read
+·
+Dec 23, 2024
+·
+View story
+-
+5.5K
+468
+-

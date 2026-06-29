@@ -5,9 +5,13 @@ description: Orchestrates the blog-writing pipeline - researcher, writer, SEO, f
 
 # Weekly Blog Pipeline
 
-Produce a new blog post as a **pull request** against `main` of `github.com/rdinkar/blog-portfolio`. Never push to main. A skipped run is better than a weak post. Multiple posts per ISO week are allowed.
+Produce a new blog post as a **pull request** against `main` of `github.com/rdinkar/blog-portfolio`. Never push to main. A skipped run is better than a weak post.
 
 Repo root: `/Users/rahul.dinkar/Documents/projects/blogs-portfolio`. All steps below run relative to it unless stated otherwise.
+
+## Cadence (quality over volume)
+
+The default is **one strong post per week.** Multiple posts per ISO week are *allowed* but are a ceiling, not a target — take a second same-week run only when the topic sits in a proven lane (interview / architecture / React internals, per the researcher's ROI weighting) and clears the full quality gate. Performance data shows that flooding the channel with thin posts (recent ones converted at ~2% read-through versus ~23% typical) hurts the channel; a missed week beats a weak post. If a run's topic is weak or only marginally distinct, abort the run rather than shipping to hit a quota.
 
 ## Step 0 — Preflight
 
@@ -31,6 +35,8 @@ All file work (post, image, validation) happens inside `$WORKDIR`. The `node_mod
 ## Step 2 — Research
 
 Dispatch the **blog-researcher** agent. Pass it: the workdir path and today's date. It returns a research brief (topic, rationale, nearest existing post, suggested angle, sourced facts sheet, code-worthy scenarios, sources). Keep the full brief — later steps need it.
+
+The researcher weights topic selection using `PERFORMANCE_PRIORS.md` (data-derived lane ranking from real Medium stats). Those priors are refreshed monthly via the performance feedback loop — see [FEEDBACK-LOOP.md](FEEDBACK-LOOP.md) (`npm run stats:update` after pasting the latest stats). Keeping it current is what makes topic selection improve over time.
 
 ## Step 3 — Write
 
