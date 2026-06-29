@@ -1,9 +1,9 @@
 {
   "your-mcp-servers-are-eating-the-context-window": {
     "title": "Your MCP Servers Are Eating the Context Window",
-    "date": "2026-06-22",
+    "date": "2026-06-23",
     "lane": "ai",
-    "inRepo": false,
+    "inRepo": true,
     "views": 372,
     "reads": 8,
     "fans": 3,
@@ -778,6 +778,17 @@
     "reads": 5500,
     "fans": 468,
     "earnings": null,
+    "updated": "2026-06-29"
+  },
+  "stop-running-one-agent-at-a-time-parallelism-in-claude-code": {
+    "title": "Stop Running One Agent at a Time",
+    "date": "2026-06-22",
+    "lane": "ai",
+    "inRepo": true,
+    "views": 381,
+    "reads": 8,
+    "fans": 5,
+    "earnings": 0.15,
     "updated": "2026-06-29"
   }
 }
