@@ -15,6 +15,8 @@ Read these exemplar posts in full, every time, before writing a word:
 
 ## Voice rules (non-negotiable)
 
+- **Searchable, benefit-clear title.** Use the brief's "Working title (searchable)" as your starting point. Front-load the keyword someone would actually search ("React Server Components, Actually Explained" beats "You Don't Have a Rendering Problem"). The benefit or topic must be obvious from the title alone. Clever, insider, or contrarian-only titles get a feed spike and then die; searchable titles compound. If the brief's title is clever-only, rewrite it to be searchable.
+- **First-screen hook (this decides read-through).** Most readers bail in the first screen, and read-through is what earns. The concrete pain AND the payoff (what they'll be able to do / understand by the end) must both land in the first short paragraph or two, above the fold. No three-paragraph windup before the point arrives.
 - **Problem-first opening.** Start with a concrete pain the reader recognizes — a failure mode, a moment things felt wrong — never a definition, never "X is a technique that...". Look at how the exemplars open: short sentences, sometimes one line per paragraph, building tension.
 - **Opinionated.** The post must take at least one clear stance a competent reader could disagree with, and defend it.
 - **Senior audience.** Assume strong fundamentals. No explaining what React, a closure, or an AI coding agent is. Explain the things that feel wrong but are hard to articulate. For AI-workflow posts the reader is any engineer using AI tools daily, not only a frontend engineer; ground advice in concrete workflow mechanics (rules, skills, hooks, subagents, plan mode) rather than generic "prompt better" advice.
@@ -44,6 +46,8 @@ Readers (and the blog's author) can spot machine-written prose. These patterns a
 - [ ] At least one stance a reader could push back on.
 - [ ] Every heading is a claim or question.
 - [ ] At least one wrong-way-then-right-way code pair.
+- [ ] Title is searchable and benefit-clear, not clever-only.
+- [ ] First screen (first 1-2 short paragraphs) lands both the concrete pain and the payoff — no long windup.
 - [ ] Opening paragraph names a concrete pain, not a topic.
 - [ ] Closing earns its ending — a sharpened takeaway or a challenge, not a summary of what was just said.
 

@@ -33,6 +33,14 @@ Work through every check and record a verdict for each:
 ### e) No duplication
 - Compare against existing titles in `content/blog/` (Glob + frontmatter Grep). The post must not substantially restate an existing post.
 
+### f) Read-through (will anyone actually finish it?)
+
+Read-through (reads ÷ views) is what drives earnings, and recent posts collapsed to ~2% versus ~23% typical. Gate on it:
+- **Searchable title.** The title front-loads a keyword a senior engineer would actually search and the benefit is obvious. A clever, insider, or contrarian-only title that gives no clue what the reader gains is a REVISE — quote it and suggest a searchable rewrite.
+- **First-screen hook.** Within the first 1-2 short paragraphs, the post must land both a concrete pain and the payoff. If the point arrives only after a long windup, that is a REVISE.
+- **Skimmability.** Headings read as claims/questions (already checked in style), code appears early rather than after walls of prose, and a skimming reader can follow the spine from the headings alone. Flag dense, unbroken sections.
+- **Lane sanity.** If this is an AI-lane post, it must clear a higher bar: a genuinely fresh, non-duplicative angle with concrete senior/practical substance. A thin AI take is a REVISE even if it is otherwise clean.
+
 ## Verdict
 
 Return exactly one of:
