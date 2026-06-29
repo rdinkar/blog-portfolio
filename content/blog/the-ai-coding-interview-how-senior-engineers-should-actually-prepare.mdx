@@ -1,0 +1,181 @@
+---
+title: "The AI Coding Interview Is Here: How Senior Engineers Should Actually Prepare"
+description: "AI coding interviews at Meta, Canva, and Google now grade how you judge AI output. What these loops score and how to prep for them"
+date: "2026-06-29"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/the-ai-coding-interview-how-senior-engineers-should-actually-prepare.svg"
+tags:
+  - ai
+  - interviews
+  - frontend
+  - career
+---
+
+![The AI Coding Interview Is Here: How Senior Engineers Should Actually Prepare](/blog-images/the-ai-coding-interview-how-senior-engineers-should-actually-prepare.svg)
+
+You walk into the onsite expecting a blank editor and a hard graph problem. Instead the interviewer hands you a four-file React codebase with a bug already in it, tells you to pick a model, and says you should absolutely use AI. Then they sit back and watch.
+
+This is the part nobody warns you about: your instinct in that moment is to close the AI panel and write everything yourself, because that is what feels honest, what feels senior. That instinct is now the fastest way to fail the loop.
+
+Meta started rolling out an AI-enabled coding round in October 2025 for SWE and EM roles at the E5 to E7 and M2 levels, replacing one of the two traditional coding rounds in the onsite. Canva went further: on June 11, 2025 they killed their "Computer Science Fundamentals" round and made an AI-Assisted Coding round mandatory for frontend, backend, and ML candidates. Their official phrasing is blunt. "Yes, you can use AI in our interviews. In fact, we insist." Google is piloting its own version in 2026 for junior and mid-level SWE roles on select US teams, using Gemini, with a new Code Comprehension Round bolted on.
+
+So this is not a trend piece about where things might go. If you are interviewing this quarter, you are materially likely to hit one of these loops, and almost nothing written for senior engineers tells you how they actually score.
+
+## The skill being graded flipped, and your prep didn't
+
+The old advice was clear. Grind LeetCode, memorize debounce and throttle, be able to reproduce a virtualized list from memory. That advice is now actively wrong for these formats, not just outdated.
+
+Here is the shift in one sentence, and it comes straight from the people running these loops: these loops grade whether you can judge code, not whether you can produce it from a blank editor. Interviewers are listening for whether you own the output or outsource the thinking.
+
+That distinction sounds soft until you see how it gets measured. Meta evaluates four competencies in a single 60-minute session: problem-solving, code quality and understanding, verification and testing practices, and communication. Their internal guidance reportedly tells candidates to use AI but show they understand the code, explain the output, and test before using. Canva's CTO Brendan Humphreys said the team wants to "see the interactions with the AI as much as the output of the tool." Google's pilot explicitly grades "AI fluency, including prompt engineering, output validation, and debugging skills."
+
+None of that is measured by reproducing quicksort.
+
+## Why "I'd rather write it myself" reads as a red flag
+
+Let me defend the contrarian part of this directly, because it is the stance most senior engineers will resist.
+
+Refusing to engage with the AI does not read as principled. It reads as rigid, and as someone who has not actually worked this way. Worse, the platforms are built to catch the performative version of refusal: modern interview tooling flags large pasted blocks and timing anomalies, and onsite interviewers run live "explain this line" follow-ups specifically to expose code a candidate didn't reason through.
+
+There is a deeper reason the refusal fails. Sundar Pichai stated in April 2026 that 75% of all new code at Google is now AI-generated and approved by engineers. The interview changed because the job changed. When you say "I prefer to write everything myself," the interviewer hears "I don't do the job the way the team does."
+
+I want to be honest about the tension, though, because the lazy version of this argument is dangerous. Fundamentals matter more in these loops, not less. You cannot validate output you don't understand. The engineers who do well are not the ones who lean hardest on the model. They are the ones whose fundamentals are strong enough that they can catch the model lying to them in real time. That is the whole game.
+
+## The "explain this line" trap
+
+Here is the most common way a strong-on-paper candidate detonates. The AI produces something that looks right, the candidate skims it, accepts it, and moves on. Two minutes later the interviewer points at one line and asks what it does.
+
+Consider this debounced search handler, the kind of thing an AI will generate without hesitation for a flight-search filter:
+
+```tsx
+function FlightSearch({ onQuery }: { onQuery: (q: string) => void }) {
+  const [value, setValue] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    const debounced = debounce(() => onQuery(e.target.value), 300);
+    debounced();
+  };
+
+  return <input value={value} onChange={handleChange} />;
+}
+```
+
+This compiles. It even appears to debounce. A candidate who pastes it and nods is one question away from disaster, because the interviewer will ask: "walk me through what happens when I type three characters quickly."
+
+The answer exposes the bug. A new `debounce` instance is created on every keystroke, so each call has its own private timer. Nothing is ever cancelled. You don't get one trailing call after 300ms of quiet, you get one call per character, each fired 300ms after its own keystroke. The debounce does nothing.
+
+The candidate who reads before accepting catches this, names it out loud, and fixes it:
+
+```tsx
+function FlightSearch({ onQuery }: { onQuery: (q: string) => void }) {
+  const [value, setValue] = useState("");
+
+  const debouncedQuery = useMemo(
+    () => debounce((q: string) => onQuery(q), 300),
+    [onQuery]
+  );
+
+  useEffect(() => () => debouncedQuery.cancel(), [debouncedQuery]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    debouncedQuery(e.target.value);
+  };
+
+  return <input value={value} onChange={handleChange} />;
+}
+```
+
+The second version scores because the candidate read the AI output the way they'd read a junior's pull request: skeptically, looking for the smell, testing the claim. That is the competency labeled "code quality and understanding," and it is most of your score.
+
+The same trap shows up with a `useEffect` missing a dependency, or a handler that captures a stale closure. If you've debugged a production incident caused by a missing dependency array, you already have the instinct these loops reward. You just have to apply it to code you didn't write, fast, while narrating.
+
+## Strategic delegation beats dumping the whole problem
+
+The single biggest separator between candidates is how they scope what they hand to the model.
+
+Take a Canva-style challenge: build a flight board with sortable, filterable rows. The weak candidate types one prompt.
+
+```
+build me a flight board in React with sorting and filtering
+```
+
+This feels efficient and it tanks the interview. You get 150 lines of plausible code you now have to understand under pressure, you didn't establish the data shape, and when the interviewer asks why the sort breaks on null departure times, you're reverse-engineering your own submission live. You have surrendered the thinking, which is the one thing being graded.
+
+The strong candidate decomposes first, then delegates well-scoped pieces and verifies after each one. Watch what the prompts look like when someone keeps control:
+
+```
+First: give me TypeScript types for a Flight with id, airline,
+departure (ISO string | null), gate, and status as a union of
+"on-time" | "delayed" | "boarding" | "cancelled". Types only.
+```
+
+```
+Now a pure reducer that sorts Flight[] by a given key and direction.
+Departure can be null; null sorts last regardless of direction.
+No React, just the function and its signature.
+```
+
+```
+Now a useFlightBoard hook that holds the flights, the active sort,
+and a status filter, and returns the derived visible rows. Use the
+reducer above. Don't add memoization yet.
+```
+
+Each prompt is small enough that you can read the whole response and verify it before the next step builds on it. You stated the null-handling rule yourself, so when the interviewer probes the edge case, you already own the answer. The interviewer is scoring problem decomposition at the first prompt, output validation at every "now run it," and your judgment in deferring memoization until you've measured.
+
+This is the behavior Canva explicitly calls successful: asking clarifying questions, delegating well-defined subtasks while keeping control, and critically reviewing what comes back. The behavior they flag as concerning is the inverse, lacking the judgment to guide the AI or spot a suboptimal suggestion.
+
+## Run after every meaningful change
+
+Verification is graded as its own competency, and most candidates treat it as an afterthought they'll get to if there's time. There is never time if you leave it to the end.
+
+The discipline that scores is simple to state and hard to do under a clock: run after every meaningful change. Not at the end. After each piece the AI hands you.
+
+Say the AI wrote a grouping utility to count flights per status for a summary bar:
+
+```ts
+function countByStatus(flights: Flight[]): Record<string, number> {
+  return flights.reduce((acc, f) => {
+    acc[f.status]++;
+    return acc;
+  }, {} as Record<string, number>);
+}
+```
+
+Looks fine in a demo. It throws or produces `NaN` the first time it hits a status it hasn't seen, because `acc[f.status]` is `undefined` and you're incrementing undefined. A candidate who runs a three-line harness by hand catches it in ten seconds:
+
+```ts
+console.log(countByStatus([]));                          // {} -> ok
+console.log(countByStatus([{ status: "delayed" } as Flight]));
+// { delayed: NaN } -> bug
+```
+
+Then the fix is obvious:
+
+```ts
+function countByStatus(flights: Flight[]): Record<string, number> {
+  return flights.reduce<Record<string, number>>((acc, f) => {
+    acc[f.status] = (acc[f.status] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+```
+
+The empty-input and first-occurrence cases are exactly the kind of thing models skip. A recurring caution in these guides cites a 2022 study finding roughly 40% of AI-generated code contained vulnerabilities when left unvetted. You don't have to believe the exact number to take the point: unverified generation is a liability, and the interview is built to see whether you treat it as one. Shopify-style loops say it plainly, they want to watch you handle the AI's garbage in real time and recover from a bad generation.
+
+## How to actually practice for this
+
+Re-grinding arrays will not move your score. The trainable skills here are different, and you can drill them on real codebases this week.
+
+Practice reading code you didn't write, fast. Clone an unfamiliar mid-size repo and give yourself ten minutes to answer where state lives and how data flows before you touch anything. You can even use the AI as a comprehension accelerator the way Meta's phase one and Google's comprehension round expect, with a prompt like "summarize the data flow across these files and tell me where state is mutated," while still forming your own mental model so you can defend it. The AI maps the territory; you still have to know the terrain.
+
+Practice budgeting 60 minutes. The recommended Meta strategy is to spend the first few minutes planning, use AI for specific well-scoped tasks, and reserve the final minutes for testing and review. The failure mode to drill out of yourself is endless prompt-tuning on a minor detail while the clock burns.
+
+Practice narrating. The competency that quietly sinks people is communication: vague prompts, and no clear account of when or why they reached for AI. Say what you're delegating and why before you delegate it. Say what you're checking when output comes back. The interviewer cannot grade judgment they cannot hear.
+
+For senior engineers, I think this is genuinely good news, and that is the stance I'll stand behind. LeetCode never measured taste, ownership, or the ability to smell a bad abstraction. These loops measure exactly that. The format finally rewards the thing experience actually gives you, which is knowing what good looks like and refusing to ship less. The candidates who hate this change are usually the ones whose advantage was memorization. If your advantage is judgment, the new interview is the one you've been waiting for.
+
+So stop closing the AI panel. Open it, hand it the small stuff, and spend your real attention on the one thing it can't do for you: deciding whether the code it gave you is actually correct.
