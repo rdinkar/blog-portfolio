@@ -1,0 +1,222 @@
+---
+title: "React Compiler 1.0: Do You Still Need useMemo and useCallback?"
+description: "React Compiler 1.0 vs useMemo and useCallback: what it auto-memoizes, where it silently bails, and how to migrate safely"
+date: "2026-07-01"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/react-compiler-1-do-you-still-need-usememo-and-usecallback.svg"
+tags:
+  - react
+  - performance
+  - react-compiler
+  - frontend
+  - memoization
+---
+
+![React Compiler 1.0: Do You Still Need useMemo and useCallback?](/blog-images/react-compiler-1-do-you-still-need-usememo-and-usecallback.svg)
+
+The advice going around is "React Compiler is stable now, go delete your useMemo and useCallback." It sounds clean. It is also the fastest way to ship a subtle regression that survives code review, passes CI, and only shows up as a mysterious over-firing effect three weeks later.
+
+By the end of this post you'll know exactly what the compiler memoizes for you, the specific code shapes that make it silently opt out of your component, and a four-phase adoption plan that gets you the wins without the paging incident. The short version of the stance: write new code without memo hooks, but do not run a find-and-replace over your existing ones.
+
+React Compiler hit stable v1.0 on October 7, 2025. As of mid-2026 it is stable in Next.js 16 and on by default in the Expo SDK 54 template. This is no longer a "maybe next year" decision. Your team is making it now, and the naive version of it is dangerous.
+
+## What the compiler actually does that your hooks can't
+
+React Compiler is a build-time optimizing compiler. It analyzes your components and hooks and inserts memoization automatically, without you rewriting anything. It works on both React and React Native, and it officially supports React 17 and up (17 and 18 need the extra `react-compiler-runtime` package; 19 does not).
+
+The part that matters for a senior audience: the compiler does memoization that manual hooks cannot cleanly express. It can memoize values that are computed *after* an early return. It can use optional chains and array indices as dependencies. Try writing a `useMemo` whose dependency is `data?.items[activeIndex]?.label` and watch the exhaustive-deps lint rule fight you. The compiler just does it, because it works on the actual dataflow graph instead of a hand-maintained array.
+
+Take a filtered list with a hand-rolled memo and callback:
+
+```jsx
+function TransactionList({ transactions, query, onSelect }) {
+  const filtered = useMemo(
+    () => transactions.filter((t) => t.merchant.includes(query)),
+    [transactions, query]
+  );
+
+  const handleSelect = useCallback(
+    (id) => onSelect(id),
+    [onSelect]
+  );
+
+  return (
+    <ul>
+      {filtered.map((t) => (
+        <TransactionRow key={t.id} txn={t} onSelect={handleSelect} />
+      ))}
+    </ul>
+  );
+}
+```
+
+Under the compiler, the idiomatic version is just this:
+
+```jsx
+function TransactionList({ transactions, query, onSelect }) {
+  const filtered = transactions.filter((t) => t.merchant.includes(query));
+  const handleSelect = (id) => onSelect(id);
+
+  return (
+    <ul>
+      {filtered.map((t) => (
+        <TransactionRow key={t.id} txn={t} onSelect={handleSelect} />
+      ))}
+    </ul>
+  );
+}
+```
+
+The compiled output is conceptually closer to this, with hidden cache slots the compiler manages for you:
+
+```jsx
+function TransactionList({ transactions, query, onSelect }) {
+  const $ = _c(4); // hidden cache, one slot per memoized value
+  let filtered;
+  if ($[0] !== transactions || $[1] !== query) {
+    filtered = transactions.filter((t) => t.merchant.includes(query));
+    $[0] = transactions; $[1] = query; $[2] = filtered;
+  } else {
+    filtered = $[2];
+  }
+  // ...handleSelect memoized the same way, keyed on onSelect
+}
+```
+
+You get the referential stability you were hand-writing, without the hooks, and the compiler is more thorough than you were being. The measured gains are real but modest: Meta reported up to 12% faster initial loads and cross-page navigations on the Quest Store, with some interactions around 2.5x faster and memory usage neutral. One independent case study saw LCP improve roughly 10% and INP roughly 15%. Nobody is claiming a 3x app. This is a broad, quiet win across many components, which is exactly the kind of thing you'd never get right by hand at scale.
+
+## Why deleting useMemo can break a working effect
+
+Here is the trap that the "just delete it" crowd skips over. Memoization was never only about render performance. Plenty of teams use `useCallback` to keep a function reference stable *specifically because that reference feeds a `useEffect` dependency array*. Remove the hook, and if that component happens to be one the compiler opts out of, the reference is fresh on every render and the effect fires on every render.
+
+Consider a live search that subscribes to a stream:
+
+```jsx
+function PriceFeed({ symbol, onTick }) {
+  const handleTick = useCallback(
+    (price) => onTick(symbol, price),
+    [symbol, onTick]
+  );
+
+  useEffect(() => {
+    const sub = subscribeToTicks(symbol, handleTick);
+    return () => sub.unsubscribe();
+  }, [symbol, handleTick]);
+
+  return <FeedStatus symbol={symbol} />;
+}
+```
+
+Someone reads "the compiler memoizes callbacks now" and strips the `useCallback`:
+
+```jsx
+function PriceFeed({ symbol, onTick }) {
+  const handleTick = (price) => onTick(symbol, price); // fresh every render
+
+  useEffect(() => {
+    const sub = subscribeToTicks(symbol, handleTick);
+    return () => sub.unsubscribe();
+  }, [symbol, handleTick]); // handleTick changes every render
+}
+```
+
+If the compiler is enabled *and* successfully memoizes this component, `handleTick` stays stable and the effect behaves. But if this component trips any bailout condition (more on those next), the compiler leaves it un-memoized, `handleTick` is a new reference every render, and now you are unsubscribing and resubscribing to a price feed on every keystroke somewhere upstream. The app still works. It just does far more than it should, and no error tells you.
+
+This is why the correct framing is that `useMemo` and `useCallback` are demoted to escape hatches, not deleted. The React team says the same thing: keep them where effect dependencies demand precise control. A memo hook that only stabilized a reference for render can go. A memo hook that anchors an effect's dependency array should stay until you have proven the compiler covers that exact component.
+
+## The bailout gallery: how the compiler silently opts out
+
+The compiler fails safely. When it cannot analyze a component, it does not crash your build; it leaves that component un-memoized and moves on. Great for stability, dangerous for expectations, because you assumed coverage you did not get. A silent bailout is the failure mode a senior actually gets paged for.
+
+Here are the common triggers, each shown as the shape that opts out.
+
+A `try/catch/finally` wrapping render logic bails out:
+
+```jsx
+function InvoiceCard({ invoiceId }) {
+  // Compiler opts out: try/catch in the render body
+  try {
+    const invoice = parseInvoice(invoiceId);
+    return <Card>{invoice.total}</Card>;
+  } catch {
+    return <Card>Unavailable</Card>;
+  }
+}
+```
+
+Reading non-deterministic values during render bails out:
+
+```jsx
+function SessionBanner({ user }) {
+  // Compiler opts out: Date.now() during render is not analyzable
+  const greeting = Date.now() % 2 === 0 ? "Welcome back" : "Hello again";
+  return <Banner>{greeting}, {user.name}</Banner>;
+}
+```
+
+Mutating a prop array in place bails out, and here the fix is a one-liner:
+
+```jsx
+function Leaderboard({ scores }) {
+  // Compiler opts out: .sort() mutates the incoming array
+  const ranked = scores.sort((a, b) => b.points - a.points);
+  return <List items={ranked} />;
+}
+```
+
+```jsx
+function Leaderboard({ scores }) {
+  // Fixed: .toSorted() returns a new array, no mutation
+  const ranked = scores.toSorted((a, b) => b.points - a.points);
+  return <List items={ranked} />;
+}
+```
+
+The other reliable triggers to keep in your head: reading an external mutable object during render (something like `globalCache[id]`), a dynamic `import()` inside the component body, and reading `ref.current` during render. All of these break the compiler's assumption that render is a pure function of props, state, and context, so it steps back.
+
+Two more limitations worth flagging because they hit real codebases. `React.memo`'s custom comparison, the second argument, is not supported by the compiler. If you rely on a selective or deep-equality prop comparison, that component needs rethinking, not just recompiling. And library interop is not free: react-hook-form users have reported issues with `useWatch` and `getValues` under the compiler, and independent testing has shown mixed results where the compiler cannot eliminate re-renders because non-memoized object references are coming from outside your code. The compiler can only reason about the code it can see.
+
+When you find a component that must not be compiled, the escape hatch is explicit. Add the directive as the first statement:
+
+```jsx
+function LegacyChart(props) {
+  'use no memo';
+  // opts this component out of the compiler entirely
+  ...
+}
+```
+
+You can spot bailouts in React DevTools: compiled components get a "Memo ✨" badge, and its absence on a component you expected to be optimized is your signal to go read the render body for one of the shapes above.
+
+## Turn on linting before you turn on anything else
+
+The mistake I want you to avoid is treating adoption as a single switch. It is a rollout, and the order matters. This is the plan I'd defend on any team with an existing codebase of meaningful size.
+
+Phase one is linting only. Install `eslint-plugin-react-hooks@latest` and enable the Rules of React rules. The compiler and the linter share the same understanding of what "correct" React looks like, so the lint rules (including newer ones like `set-state-in-render`, `set-state-in-effect`, and `refs`) surface exactly the patterns that will cause bailouts, before you compile a single file. Fix those first. You get cleaner code even if you never enable the compiler.
+
+Phase two is narrow, directory-scoped compilation on a low-risk area. A design-system or UI component library is ideal: high reuse, stable props, few effects with reference-sensitive dependencies. In Next.js 16 `reactCompiler` is a top-level key (it moved out of `experimental` when it stabilized), and you scope which files get compiled with the compiler's `sources` option, a function that returns whether a given file opts in:
+
+```js
+// next.config.js (Next.js 16)
+module.exports = {
+  reactCompiler: {
+    // only compile the design-system directory for now
+    sources: (filename) => filename.includes('/src/components/ui/'),
+  },
+};
+```
+
+That `sources` function is the actual directory gate: any file it returns false for is left untouched, so the rest of the app runs exactly as it did before. This is the option I reach for during rollout because the scope lives in one place and expanding it later is a one-line change. If you'd rather opt in component by component instead of by directory, that's a different mechanism: set `compilationMode: 'annotation'` and add a `'use memo'` directive to each component you want compiled. Don't mix the two; pick directory scoping or per-component annotation, not both.
+
+Phase three is profiling. After each expansion, open React DevTools and confirm the components you expected to be memoized actually carry the badge, and check that render counts under interaction went down rather than up. This is where you catch a bailout you did not predict, while the blast radius is still one directory.
+
+Phase four, and only phase four, is removing redundant memoization. Delete a `useMemo` or `useCallback` only after you have confirmed no effect depends on its reference stability, or that the compiler is reliably memoizing that specific component. New code is different: for anything written after adoption, skip the memo hooks unless you have a concrete, tested reason. The default flipped. Plain code is now the fast code.
+
+## One thing worth arguing about
+
+React chose a compiler while most of the ecosystem chose Signals. Angular, Solid, Vue, and Preact all reach for fine-grained reactivity, and the TC39 Signals proposal has sat at Stage 1 for over two years. The compiler bet is that you should be able to write plain, idiomatic React and let the build step handle performance, rather than adopt a new reactivity primitive that changes how you write every component.
+
+I think that bet is mostly right, and the reason is exactly the invisibility that critics complain about. The compiler's output is hidden. You cannot see the cache slots in your source, which genuinely does complicate review and debugging compared to an explicit dependency array. But that same invisibility is what lets a large team stop thinking about referential stability on every callback. The cost is real: you trade a visible, auditable mechanism for an automatic one you have to trust. For most product code, that trade is worth it. For a hot path where you need to reason about every allocation, keep the escape hatch and keep it visible.
+
+So the honest answer to "do you still need useMemo and useCallback" is yes, less often, and for a narrower reason than before. They stopped being your default performance tool and became a precision instrument for the cases the compiler can't or won't cover. Delete them the way you'd remove a load-bearing wall: only after you've checked what's resting on it.
