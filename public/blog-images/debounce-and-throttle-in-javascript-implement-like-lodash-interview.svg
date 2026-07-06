@@ -1,0 +1,57 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="74%" cy="36%" r="58%">
+      <stop offset="0%" stop-color="#2a2140" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#1a1a2e" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c8a2ff"/>
+      <stop offset="100%" stop-color="#5a8dff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#1a1a2e"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Concept: a dense burst of rapid input events (left) is collapsed by
+       debounce/throttle into a single clean output pulse (right). -->
+  <g transform="translate(700 150)">
+    <!-- baseline -->
+    <line x1="0" y1="170" x2="440" y2="170" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+
+    <!-- noisy input burst: many tall thin spikes crowding together -->
+    <g stroke="#ffffff" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round">
+      <line x1="14"  y1="170" x2="14"  y2="72"/>
+      <line x1="34"  y1="170" x2="34"  y2="52"/>
+      <line x1="52"  y1="170" x2="52"  y2="96"/>
+      <line x1="68"  y1="170" x2="68"  y2="40"/>
+      <line x1="86"  y1="170" x2="86"  y2="84"/>
+      <line x1="102" y1="170" x2="102" y2="60"/>
+      <line x1="120" y1="170" x2="120" y2="106"/>
+      <line x1="136" y1="170" x2="136" y2="48"/>
+      <line x1="154" y1="170" x2="154" y2="90"/>
+      <line x1="172" y1="170" x2="172" y2="66"/>
+    </g>
+
+    <!-- collapse arrow / gate -->
+    <path d="M212 170 C 262 170, 262 170, 312 170" fill="none" stroke="url(#accent)" stroke-width="3" stroke-opacity="0.5" stroke-dasharray="2 10" stroke-linecap="round"/>
+
+    <!-- single clean output pulse -->
+    <line x1="360" y1="170" x2="360" y2="30" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="360" cy="30" r="12" fill="url(#accent)"/>
+    <circle cx="360" cy="30" r="26" fill="none" stroke="url(#accent)" stroke-width="2" stroke-opacity="0.4"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="216" font-family="Inter, -apple-system, sans-serif" font-size="66" font-weight="800" fill="#ffffff" letter-spacing="-2">Debounce &amp;</text>
+  <text x="80" y="288" font-family="Inter, -apple-system, sans-serif" font-size="66" font-weight="800" fill="#ffffff" letter-spacing="-2">throttle</text>
+
+  <text x="80" y="392" font-family="Inter, -apple-system, sans-serif" font-size="30" font-weight="500" fill="#c8a2ff">Built like lodash: edges,</text>
+  <text x="80" y="432" font-family="Inter, -apple-system, sans-serif" font-size="30" font-weight="500" fill="#c8a2ff">maxWait, cancel, flush.</text>
+
+  <rect x="80" y="470" width="64" height="5" rx="2.5" fill="url(#accent)"/>
+</svg>
