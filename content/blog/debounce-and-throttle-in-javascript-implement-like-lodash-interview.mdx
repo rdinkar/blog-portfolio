@@ -1,0 +1,398 @@
+---
+title: "Debounce and Throttle in JavaScript: How to Implement Them Like Lodash"
+description: "Debounce and throttle in JavaScript, built like lodash: leading/trailing edges, maxWait, cancel, flush, rAF, and the React memoization bug"
+date: "2026-07-06"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/debounce-and-throttle-in-javascript-implement-like-lodash-interview.svg"
+tags:
+  - javascript
+  - interviews
+  - frontend
+  - performance
+  - react
+---
+
+![Debounce and Throttle in JavaScript: How to Implement Them Like Lodash](/blog-images/debounce-and-throttle-in-javascript-implement-like-lodash-interview.svg)
+
+You get asked to implement `debounce` in a machine-coding round. You write six lines: a closure, a `setTimeout`, a `clearTimeout`. It works in the demo. The interviewer nods, and then asks the question that actually decides the loop: "How would you cancel a pending call? What if the user never stops typing and the save never fires?"
+
+That is where most senior candidates go quiet. The six-line version is the junior answer, and a good interviewer knows it. By the end of this post you'll be able to build both functions the way lodash does, leading and trailing edges, `maxWait`, `cancel` and `flush`, correct `this` forwarding, plus the `requestAnimationFrame` variant for scroll handlers and the React lifecycle bug that quietly breaks the toy version in real apps.
+
+We're picking up exactly where the naive `(func, wait)` snippet stops. If you want the one-liner, it's everywhere. This is the version that separates the answer that gets you past mid-level.
+
+## The naive version, and the first thing that breaks
+
+Here's the debounce almost everyone writes:
+
+```javascript
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+```
+
+Lodash defines it as `_.debounce(func, wait, [options])`: it delays invoking `func` until `wait` milliseconds have passed since the last call. Every new call clears the previous timer. Wait until events stop, then fire once. That is the whole idea.
+
+This version is actually fine on `this` and args, and that's worth pausing on, because it's the most common place people cut a corner. The inner function uses a regular `function` (not an arrow), so it has its own `this`, and it forwards both `this` and the arguments with `func.apply(this, args)`. Drop the `apply`, hardcode `func()`, and your debounced method loses its receiver and every argument. Attach it to an input handler and `event` is gone.
+
+So the binding is correct. What breaks is everything the interviewer asks next. There's no way to cancel a pending call. There's no way to force it to run now. It always fires on the trailing edge, so the first keystroke feels laggy. And a debounced autosave can defer forever if the user keeps typing.
+
+We'll fix these one at a time.
+
+## Why you need the leading edge (and how it changes the timing)
+
+Trailing-edge debounce fires after the burst ends. That's right for search-as-you-type: wait until they stop, then hit the API. It's wrong for a submit button. If someone double-clicks "Pay", you want the first click to go through immediately and the rest ignored until the window closes. That's a leading-edge debounce.
+
+Lodash exposes this through options. The defaults are `leading: false, trailing: true`. Flip them to `{ leading: true, trailing: false }` and you get fire-first-then-suppress. Here's a version that supports both edges and stays honest about the lodash rule: when `leading` and `trailing` are both true, the trailing call only fires if the debounced function was invoked more than once during the wait.
+
+```javascript
+function debounce(func, wait, options = {}) {
+  const { leading = false, trailing = true } = options;
+  let timeout = null;
+  let callCount = 0;
+
+  return function (...args) {
+    const context = this;
+    callCount++;
+
+    if (timeout === null && leading) {
+      func.apply(context, args);
+    }
+
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      // Only fire trailing if there was more than the single leading call,
+      // or if leading was off entirely.
+      if (trailing && (callCount > 1 || !leading)) {
+        func.apply(context, args);
+      }
+      timeout = null;
+      callCount = 0;
+    }, wait);
+  };
+}
+```
+
+Two things to say out loud in an interview. First, if `leading` fired and only one call happened in the window, you must not fire again on the trailing edge, otherwise a single click runs twice. The `callCount` check is what enforces that. Second, `timeout === null` is how you detect the leading edge: it's null before the first call of a burst and reset to null when the burst settles.
+
+There's a `wait: 0` corner worth knowing. With `wait: 0` and `leading: false`, lodash defers to the next tick, the same as `setTimeout(fn, 0)`. Our version does exactly that too, which is a nice detail to mention when someone probes edge cases.
+
+## maxWait: the fix for the save that never happens
+
+This is the option that most cleanly signals seniority, because it comes from a real production failure, not a spec.
+
+Picture a debounced autosave with a 1000ms wait. A user types a long paragraph without pausing for a full second. The timer keeps resetting on every keystroke. The save defers, and defers, and never fires until they stop. For a search box that's fine. For "we lost your draft" it's a bug report.
+
+`maxWait` caps the deferral. No matter how long the burst runs, `func` fires at least once every `maxWait` milliseconds. Lodash leaves it undefined by default.
+
+```javascript
+function debounce(func, wait, options = {}) {
+  const { leading = false, trailing = true, maxWait } = options;
+  let timeout = null;
+  let lastInvokeTime = 0;
+  let lastCallTime = 0;
+  let callCount = 0;
+
+  function invoke(context, args) {
+    lastInvokeTime = Date.now();
+    callCount = 0;
+    func.apply(context, args);
+  }
+
+  return function (...args) {
+    const context = this;
+    const now = Date.now();
+    callCount++;
+    lastCallTime = now;
+
+    const isLeadingEdge = timeout === null;
+
+    if (isLeadingEdge) {
+      lastInvokeTime = lastInvokeTime || now;
+      if (leading) invoke(context, args);
+    }
+
+    // Force an invoke if we've deferred longer than maxWait allows.
+    if (maxWait !== undefined && now - lastInvokeTime >= maxWait) {
+      clearTimeout(timeout);
+      timeout = null;
+      invoke(context, args);
+      return;
+    }
+
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      if (trailing && (callCount > 1 || !leading)) {
+        invoke(context, args);
+      }
+      timeout = null;
+    }, wait);
+  };
+}
+```
+
+The mechanism is straightforward once you name it: track `lastInvokeTime`, and on every call check whether `now - lastInvokeTime` has crossed `maxWait`. If it has, invoke right away and skip the reset. The real lodash implementation computes the remaining time more precisely and schedules a single timer for whichever deadline comes first, but the check-on-call approach captures the behaviour and is defensible on a whiteboard. Say that tradeoff to the interviewer rather than pretending you've reproduced lodash line for line.
+
+## cancel and flush: the two methods that finish the answer
+
+Both lodash `debounce` and `throttle` return a function with two methods attached. `cancel` drops any pending invocation. `flush` invokes the pending call immediately. Subsequent reads return the result of the last `func` invocation.
+
+You need these constantly in real code. `cancel` is what you call when a component unmounts so a trailing save doesn't fire against a dead component. `flush` is what you call on a form's `blur` so the last edit persists without waiting out the timer.
+
+```javascript
+function debounce(func, wait, options = {}) {
+  const { leading = false, trailing = true, maxWait } = options;
+  let timeout = null;
+  let lastArgs = null;
+  let lastContext = null;
+  let lastInvokeTime = 0;
+  let callCount = 0;
+  let result;
+
+  function invoke() {
+    lastInvokeTime = Date.now();
+    callCount = 0;
+    result = func.apply(lastContext, lastArgs);
+    lastArgs = lastContext = null;
+    return result;
+  }
+
+  function debounced(...args) {
+    const now = Date.now();
+    lastArgs = args;
+    lastContext = this;
+    callCount++;
+
+    const isLeadingEdge = timeout === null;
+    if (isLeadingEdge) {
+      lastInvokeTime = lastInvokeTime || now;
+      if (leading) invoke();
+    }
+
+    if (maxWait !== undefined && now - lastInvokeTime >= maxWait) {
+      clearTimeout(timeout);
+      timeout = null;
+      return invoke();
+    }
+
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = null;
+      if (trailing && (callCount > 1 || !leading) && lastArgs) {
+        invoke();
+      }
+    }, wait);
+
+    return result;
+  }
+
+  debounced.cancel = function () {
+    clearTimeout(timeout);
+    timeout = null;
+    lastArgs = lastContext = null;
+    callCount = 0;
+  };
+
+  debounced.flush = function () {
+    if (timeout === null) return result;
+    clearTimeout(timeout);
+    timeout = null;
+    return invoke();
+  };
+
+  return debounced;
+}
+```
+
+Notice `debounced` returns `result`, the value of the last invocation, so callers reading the return value get lodash-compatible behaviour. And `flush` returns early if nothing is pending, so you never invoke against stale, nulled-out args.
+
+That's the full debounce. Leading and trailing edges, `maxWait`, `cancel`, `flush`, correct forwarding. This is the version that reads as "I've shipped this," not "I memorised a snippet."
+
+## Throttle is a different promise, not a different flavor
+
+People treat throttle as debounce's cousin. They're not the same shape at all. Debounce waits until the storm stops. Throttle runs periodically during the storm, at most once per interval. Scrolling is the canonical case: you don't want to wait until scrolling ends to update a progress bar, you want an update every ~100ms while it happens.
+
+Lodash `throttle` is `_.throttle(func, wait, [options])`, and its defaults differ from debounce: `leading: true, trailing: true`. Same both-edges rule applies, the trailing call only fires if the function was invoked more than once during the wait.
+
+Here's a common bug that hides in interview answers. This one clears nothing and looks like throttle:
+
+```javascript
+// Looks like throttle. Behaves wrong.
+function throttle(func, wait) {
+  let timeout;
+  return function (...args) {
+    if (!timeout) {
+      timeout = setTimeout(() => {
+        timeout = null;
+      }, wait);
+      func.apply(this, args);
+    }
+  };
+}
+```
+
+This drops the trailing edge entirely. It fires the leading call, then ignores everything until the window resets. If the user scrolls and stops mid-window, the final position is never reported, and your progress bar ends up slightly wrong. Worse is the mirror-image mistake in debounce: forget to `clearTimeout` on each call, and your "debounce" quietly becomes a throttle, firing on a fixed cadence instead of waiting for a pause. It's the single most common "why doesn't this behave like I expect" bug in this whole topic.
+
+The version that keeps the trailing edge queues the latest args and flushes them when the cooldown ends:
+
+```javascript
+function throttle(func, wait, options = {}) {
+  const { leading = true, trailing = true } = options;
+  let timeout = null;
+  let lastArgs = null;
+  let lastContext = null;
+
+  function invoke(context, args) {
+    func.apply(context, args);
+  }
+
+  return function (...args) {
+    lastArgs = args;
+    lastContext = this;
+
+    if (timeout === null) {
+      if (leading) {
+        invoke(this, args);
+        lastArgs = lastContext = null;
+      }
+      timeout = setTimeout(function tick() {
+        // Flush the most recent args captured during the cooldown.
+        if (trailing && lastArgs) {
+          invoke(lastContext, lastArgs);
+          lastArgs = lastContext = null;
+          // Restart the window so a continuing storm keeps ticking.
+          timeout = setTimeout(tick, wait);
+        } else {
+          timeout = null;
+        }
+      }, wait);
+    }
+  };
+}
+```
+
+The key move is capturing `lastArgs` on every call and firing them at the end of the window. That's what "invoke with the latest args at cooldown end" means, and it's what the broken version above skips.
+
+## For anything that paints, throttle with requestAnimationFrame instead
+
+Here's a stance worth defending: if the throttled work touches the DOM or reads layout, scroll, pointermove, resize, drag, you should throttle with `requestAnimationFrame`, not `setTimeout`. Time-based throttle is the wrong tool for paint-bound work, and a good interviewer will push on this exact point.
+
+Two reasons. First, the browser paints at the display's refresh rate, typically 60Hz, roughly one frame every 16.7ms. A `setTimeout(fn, 100)` throttle isn't aligned with that cadence. You either do work between frames that gets thrown away, or you skip a frame the user could have seen. `requestAnimationFrame` fires right before the next paint, so you compute layout exactly once per frame the user will actually see. Second, background tabs. `rAF` stops firing when the tab isn't visible. `setTimeout` keeps going, and while modern browsers clamp it to about once per second in a backgrounded tab, that's still work you don't need. `rAF` gives you free pause-when-hidden.
+
+```javascript
+function rafThrottle(func) {
+  let rafId = null;
+  let lastArgs = null;
+  let lastContext = null;
+
+  function throttled(...args) {
+    lastArgs = args;
+    lastContext = this;
+    if (rafId !== null) return; // A frame is already scheduled.
+
+    rafId = requestAnimationFrame(() => {
+      func.apply(lastContext, lastArgs);
+      rafId = null;
+    });
+  }
+
+  throttled.cancel = function () {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  };
+
+  return throttled;
+}
+
+// Usage: a scroll-linked progress indicator.
+const onScroll = rafThrottle(() => {
+  const scrolled = window.scrollY / (document.body.scrollHeight - innerHeight);
+  progressBar.style.transform = `scaleX(${scrolled})`;
+});
+window.addEventListener("scroll", onScroll, { passive: true });
+```
+
+No wait value to tune, no magic 100ms. You always run at most once per frame, always with the newest scroll position, and never against a paint the user can't see. For pure data work like an API call you'd still reach for the time-based throttle, but for anything that writes to the screen, `rAF` is the better default.
+
+## The React bug that breaks the toy version silently
+
+You can implement debounce flawlessly and still ship a search box that never debounces, because the bug isn't in the utility, it's in where you call it. This is the single most common mistake I see in React code, and I'll say plainly it's a bug, not a style preference.
+
+```javascript
+// This search box's debounce never debounces; the fetch fires on every keystroke.
+function SearchBox() {
+  const [query, setQuery] = useState("");
+
+  // New debounced function created on EVERY render.
+  const debouncedSearch = debounce((value) => {
+    fetch(`/api/search?q=${value}`);
+  }, 300);
+
+  return (
+    <input
+      value={query}
+      onChange={(e) => {
+        setQuery(e.target.value);
+        debouncedSearch(e.target.value);
+      }}
+    />
+  );
+}
+```
+
+Walk through what happens on each keystroke. `setQuery` triggers a re-render. The render body runs again, so `debounce(...)` runs again and produces a brand new debounced function with a fresh, empty closure. The `timeout` from the previous keystroke lives in the old instance that just got thrown away. Because each render's `timeout` lives in its own throwaway closure, `clearTimeout` never cancels the previous keystroke's timer. So every keystroke gets its own 300ms timer and every one of them fires. You get a fetch per character, which is the opposite of debouncing.
+
+The fix is to create the debounced function once and reuse the same instance across renders. `useRef` or `useMemo` both work; `useRef` reads most clearly for a stable mutable value.
+
+```javascript
+function SearchBox() {
+  const [query, setQuery] = useState("");
+
+  // Created once. Same instance for the component's whole life.
+  const debouncedSearch = useRef(
+    debounce((value) => {
+      fetch(`/api/search?q=${value}`);
+    }, 300)
+  ).current;
+
+  // Cancel the pending call on unmount so a trailing fetch
+  // doesn't run against a component that no longer exists.
+  useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
+  return (
+    <input
+      value={query}
+      onChange={(e) => {
+        setQuery(e.target.value);
+        debouncedSearch(e.target.value);
+      }}
+    />
+  );
+}
+```
+
+This is where `cancel` earns its place in the API. Without memoization the timer is never cleared, and the trailing call can fire after the component unmounts, which in a search box means a `setState` on a dead component or a wasted request. The `useEffect` cleanup calling `debouncedSearch.cancel()` closes that hole. Note that the debounced callback captures `fetch` here, which has no closure over props or state, so a `useRef` created once is safe. The moment your debounced function needs fresh props or state, you have to keep it in sync (a ref that you update in an effect, or a `useMemo` with the right dependencies) or you'll debounce a stale closure. That nuance is worth raising before the interviewer does.
+
+## Three quick "what does this log" checks
+
+Interviewers love short trace questions after the implementation. Here are the three that come up most.
+
+Leading versus trailing in a burst. With `debounce(fn, 100, { leading: true, trailing: true })`, if you call the debounced function five times in 50ms and then stop, `fn` runs twice: once immediately on the leading edge, once on the trailing edge after the window closes, because there was more than one call. With `{ leading: true, trailing: false }` and the same burst, it runs once. With a single call and both edges on, it runs once, not twice. If your answer is "twice" for the single call, you've got the both-edges rule wrong.
+
+The save that never fires. A `debounce(save, 1000)` wired to a text area, with a user typing continuously for eight seconds. How many times does `save` run during those eight seconds? Zero. The timer resets on every keystroke. Add `{ maxWait: 2000 }` and it runs roughly every two seconds regardless of the typing.
+
+The accidental throttle. Take the naive debounce and delete the `clearTimeout(timeout)` line. Now it schedules a timer only when there isn't one pending and lets it run to completion. That's throttle behaviour, fixed cadence, not wait-for-pause. If a candidate's "debounce" fires on a steady interval during a burst, this missing line is almost always why.
+
+## What actually gets you past the naive answer
+
+The bare `setTimeout` debounce is table stakes. It caps you at mid-level because it answers the easy half of the question and none of the hard half. What moves you up is knowing why the extra surface exists: `cancel` because components unmount, `flush` because forms blur, `maxWait` because users don't pause, `rAF` throttling because the screen paints on its own schedule, and the React memoization rule because a function created in a render body is a new function every render.
+
+For context on the tradeoff, `lodash.debounce` ships around 1.5KB, `throttle-debounce` around 1KB, and the tiny `perfect-debounce` around 300 bytes. In production you'll usually pull one of those in rather than hand-roll. But the interview isn't asking whether you can `npm install`. It's asking whether you understand what's inside the box well enough to debug it at 2am when the autosave stops firing. Build it in layers, name each failure the layer fixes, and you'll answer the question the interviewer is actually asking.
