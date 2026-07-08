@@ -1,0 +1,70 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="74%" cy="34%" r="58%">
+      <stop offset="0%" stop-color="#2a3d52" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#1a1a2e" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7fd8c4"/>
+      <stop offset="100%" stop-color="#4a9fd4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#1a1a2e"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Concept: a live typeahead. Search input with a caret mid-query, an open
+       listbox of suggestions, one row virtually highlighted (aria-activedescendant),
+       and a faint stale row fading out (the race-condition result being discarded). -->
+  <g transform="translate(700 130)">
+    <!-- combobox input -->
+    <rect x="0" y="0" width="400" height="70" rx="14" fill="#13131f" stroke="url(#accent)" stroke-width="2"/>
+    <!-- magnifier icon -->
+    <g transform="translate(34 35)" stroke="#7fd8c4" stroke-width="4" fill="none" stroke-linecap="round">
+      <circle cx="0" cy="0" r="11"/>
+      <line x1="8" y1="8" x2="18" y2="18"/>
+    </g>
+    <!-- typed query -->
+    <text x="70" y="46" font-family="Inter, -apple-system, sans-serif" font-size="27" font-weight="600" fill="#ffffff">databr</text>
+    <!-- blinking caret -->
+    <rect x="167" y="24" width="3" height="30" rx="1.5" fill="#7fd8c4"/>
+
+    <!-- listbox popup -->
+    <rect x="0" y="86" width="400" height="290" rx="14" fill="#13131f" stroke="#ffffff" stroke-opacity="0.08"/>
+
+    <!-- option rows -->
+    <g font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="500">
+      <!-- highlighted / active option -->
+      <rect x="12" y="98" width="376" height="46" rx="9" fill="url(#accent)" fill-opacity="0.16" stroke="url(#accent)" stroke-width="1.5"/>
+      <rect x="26" y="115" width="10" height="12" rx="2" fill="#7fd8c4"/>
+      <text x="48" y="128" fill="#ffffff">databr<tspan fill="#7fd8c4" font-weight="700">icks</tspan></text>
+
+      <rect x="26" y="166" width="10" height="12" rx="2" fill="#ffffff" fill-opacity="0.25"/>
+      <text x="48" y="179" fill="#ffffff" fill-opacity="0.7">databr<tspan fill="#ffffff" fill-opacity="0.4">idge</tspan></text>
+
+      <rect x="26" y="215" width="10" height="12" rx="2" fill="#ffffff" fill-opacity="0.25"/>
+      <text x="48" y="228" fill="#ffffff" fill-opacity="0.7">databr<tspan fill="#ffffff" fill-opacity="0.4">oker</tspan></text>
+
+      <!-- stale result fading out (race condition, discarded) -->
+      <rect x="26" y="264" width="10" height="12" rx="2" fill="#ffffff" fill-opacity="0.1"/>
+      <text x="48" y="277" fill="#ffffff" fill-opacity="0.22">datab (stale)</text>
+
+      <rect x="26" y="313" width="10" height="12" rx="2" fill="#ffffff" fill-opacity="0.1"/>
+      <rect x="48" y="313" width="150" height="11" rx="5" fill="#ffffff" fill-opacity="0.1"/>
+    </g>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="180" font-family="Inter, -apple-system, sans-serif" font-size="60" font-weight="800" fill="#ffffff" letter-spacing="-1.5">Build an</text>
+  <text x="80" y="248" font-family="Inter, -apple-system, sans-serif" font-size="60" font-weight="800" fill="#ffffff" letter-spacing="-1.5">autocomplete</text>
+  <text x="80" y="316" font-family="Inter, -apple-system, sans-serif" font-size="60" font-weight="800" fill="url(#accent)" letter-spacing="-1.5">typeahead</text>
+
+  <text x="80" y="418" font-family="Inter, -apple-system, sans-serif" font-size="27" font-weight="500" fill="#7fd8c4">Debounce is table stakes.</text>
+  <text x="80" y="454" font-family="Inter, -apple-system, sans-serif" font-size="27" font-weight="500" fill="#7fd8c4">Race conditions decide the round.</text>
+
+  <rect x="80" y="492" width="64" height="5" rx="2.5" fill="url(#accent)"/>
+</svg>
