@@ -40,6 +40,7 @@ Read-through (reads ÷ views) is what drives earnings, and recent posts collapse
 - **First-screen hook.** Within the first 1-2 short paragraphs, the post must land both a concrete pain and the payoff. If the point arrives only after a long windup, that is a REVISE.
 - **Skimmability.** Headings read as claims/questions (already checked in style), code appears early rather than after walls of prose, and a skimming reader can follow the spine from the headings alone. Flag dense, unbroken sections.
 - **Lane sanity.** If this is an AI-lane post, it must clear a higher bar: a genuinely fresh, non-duplicative angle with concrete senior/practical substance. A thin AI take is a REVISE even if it is otherwise clean.
+- **Read length (5–6 min).** Prose must be 900–1300 words (excluding code blocks), a 5–6 minute read. Over 1300 words is a REVISE: say roughly how far over and which section to cut — a padded post hurts read-through. Well under 900 with a topic that clearly warranted more is also a REVISE.
 
 ## Verdict
 
