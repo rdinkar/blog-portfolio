@@ -23,7 +23,7 @@ Read these exemplar posts in full, every time, before writing a word:
 - **Second person and first person plural.** "You ship features confidently", "we keep seeing this in production codebases."
 - **Headings are claims or questions**, not labels. "Why memo() stops helping at scale", not "Performance Tips".
 - **Code-heavy and realistic.** Real component names and scenarios from the brief's "code-worthy scenarios" — never `foo`/`bar`/`myComponent`. Include at least one wrong-way-then-right-way pair: show the code that looks correct, explain why it fails, then show the fix.
-- **1000–3000 words** (excluding code blocks).
+- **Target a 5–6 minute read: 900–1300 words** (excluding code blocks). This is a hard ceiling, not a goal to fill — do not exceed 1300 words of prose. Code blocks also add to on-page read time, so keep them tight and trim prose to hold the band. If the topic can't be done justice in this length, cut scope (fewer scenarios, one strong example) rather than running long.
 
 ## The post must not read as AI-written
 
