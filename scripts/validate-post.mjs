@@ -10,11 +10,20 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import readingTime from "reading-time";
 import { serialize } from "next-mdx-remote/serialize";
 
 const REQUIRED_AUTHOR = "Rahul Dinkar";
-const MIN_WORDS = 1000;
-const MAX_WORDS = 3000;
+// Hard read-time ceiling. This is the authoritative length gate and it is
+// computed the SAME way the live site computes it (src/lib/mdx.tsx runs
+// `reading-time` over the full MDX body, code blocks included), so what passes
+// here is exactly what renders on the page. The site rounds up, so a post must
+// stay at or under 6.0 minutes to display "5 min read" / "6 min read".
+// Do NOT re-introduce a prose-only word band here: it silently diverges from the
+// site metric (a code-heavy post can be in-band on prose yet read 9+ min), which
+// is exactly how an 11-min post shipped past this validator before.
+const MAX_READ_MINUTES = 6;
+const MIN_READ_MINUTES = 3; // floor is advisory (warning), not a hard failure
 const MAX_DESCRIPTION_LENGTH = 139;
 
 const errors = [];
@@ -91,12 +100,26 @@ if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
   errors.push(`Filename slug must be kebab-case: ${slug}`);
 }
 
-// --- Word count ---
+// --- Read length (site-identical) ---
+// Mirror src/lib/mdx.tsx exactly: run `reading-time` over the full body so this
+// gate matches the "N min read" the page will show.
+const stats = readingTime(content);
+const readMinutes = stats.minutes; // unrounded; site rounds up for display
+if (readMinutes > MAX_READ_MINUTES) {
+  errors.push(
+    `Reads ${stats.text} (${readMinutes.toFixed(1)} min over full body, code included); ` +
+      `hard ceiling is ${MAX_READ_MINUTES} min. Cut prose and/or trim code blocks until it drops to 6 min or under.`
+  );
+} else if (readMinutes < MIN_READ_MINUTES) {
+  warnings.push(
+    `Reads ${stats.text} (${readMinutes.toFixed(1)} min); under the ${MIN_READ_MINUTES}-min soft floor. ` +
+      `Fine if the topic is genuinely that tight, otherwise consider adding substance.`
+  );
+}
+
+// Prose word count is informational only (reported in the OK line, not gated).
 const prose = content.replace(/```[\s\S]*?```/g, " "); // body excluding code blocks
 const words = prose.split(/\s+/).filter(Boolean).length;
-if (words < MIN_WORDS || words > MAX_WORDS) {
-  errors.push(`Body is ${words} words (excluding code blocks); expected ${MIN_WORDS}-${MAX_WORDS}.`);
-}
 
 // --- AI-tell scan: em dashes are banned in prose (an AI-writing giveaway) ---
 const emDashCount = (prose.match(/—/g) || []).length;
@@ -134,4 +157,6 @@ if (errors.length > 0) {
   for (const e of errors) console.error(`ERROR ${name}: ${e}`);
   process.exit(1);
 }
-console.log(`OK    ${name}: frontmatter valid, MDX compiles, ${words} words.`);
+console.log(
+  `OK    ${name}: frontmatter valid, MDX compiles, ${stats.text} (${readMinutes.toFixed(1)} min, ${words} prose words + code).`
+);

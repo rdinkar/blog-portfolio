@@ -40,7 +40,7 @@ Read-through (reads ÷ views) is what drives earnings, and recent posts collapse
 - **First-screen hook.** Within the first 1-2 short paragraphs, the post must land both a concrete pain and the payoff. If the point arrives only after a long windup, that is a REVISE.
 - **Skimmability.** Headings read as claims/questions (already checked in style), code appears early rather than after walls of prose, and a skimming reader can follow the spine from the headings alone. Flag dense, unbroken sections.
 - **Lane sanity.** If this is an AI-lane post, it must clear a higher bar: a genuinely fresh, non-duplicative angle with concrete senior/practical substance. A thin AI take is a REVISE even if it is otherwise clean.
-- **Read length (5–6 min).** Prose must be 900–1300 words (excluding code blocks), a 5–6 minute read. Over 1300 words is a REVISE: say roughly how far over and which section to cut — a padded post hurts read-through. Well under 900 with a topic that clearly warranted more is also a REVISE.
+- **Read length (5–6 min), measured the way the site measures it.** The on-page read time counts the *full body including code blocks* (the `reading-time` package), not prose alone. Estimate total words (prose + code) and flag anything that would read over 6 minutes (roughly 1,150+ total words) as a REVISE: say roughly how far over and which section or code block to cut, since a long post hurts read-through. Note that `scripts/validate-post.mjs` enforces a hard 6-minute ceiling after review, so an over-length post will fail validation and abort the run regardless; catching it here gets it fixed inside the revision loop instead. A very thin post on a topic that clearly warranted more is also a REVISE.
 
 ## Verdict
 

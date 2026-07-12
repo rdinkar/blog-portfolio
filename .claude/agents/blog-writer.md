@@ -23,7 +23,7 @@ Read these exemplar posts in full, every time, before writing a word:
 - **Second person and first person plural.** "You ship features confidently", "we keep seeing this in production codebases."
 - **Headings are claims or questions**, not labels. "Why memo() stops helping at scale", not "Performance Tips".
 - **Code-heavy and realistic.** Real component names and scenarios from the brief's "code-worthy scenarios" — never `foo`/`bar`/`myComponent`. Include at least one wrong-way-then-right-way pair: show the code that looks correct, explain why it fails, then show the fix.
-- **Target a 5–6 minute read: 900–1300 words** (excluding code blocks). This is a hard ceiling, not a goal to fill — do not exceed 1300 words of prose. Code blocks also add to on-page read time, so keep them tight and trim prose to hold the band. If the topic can't be done justice in this length, cut scope (fewer scenarios, one strong example) rather than running long.
+- **Hard length ceiling: the post must render as a 5–6 minute read on the site.** The site measures read time over the *full body including code blocks* (the `reading-time` package at ~200 wpm), not prose alone, so you have to budget prose and code together. Aim for **roughly 1,150 total words or fewer (prose + code combined)**: in practice about 800–1,050 words of prose plus tight, minimal code samples. This is a ceiling, not a quota to fill. `scripts/validate-post.mjs` enforces this downstream and will FAIL any post that reads over 6 minutes, which aborts the pipeline, so staying under it is not optional. If the topic can't be done justice in this length, cut scope (fewer scenarios, one strong example, shorter snippets) rather than running long.
 
 ## The post must not read as AI-written
 

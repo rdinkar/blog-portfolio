@@ -71,6 +71,8 @@ node scripts/validate-post.mjs content/blog/<slug>.mdx
 
 Fix any reported errors (dispatch blog-writer for content issues; fix mechanical frontmatter issues directly) and re-run until it passes. Do not ship a post that fails validation.
 
+The validator enforces a **hard 5–6 minute read ceiling**, computed exactly the way the live site computes it (`reading-time` over the full body, code blocks included). If it fails with a read-length error, that is a content fix: dispatch **blog-writer** in revision mode telling it exactly how far over 6 minutes the post reads and to cut prose and/or trim code blocks (fewer scenarios, one strong example, shorter snippets) to land at 5–6 minutes, then re-validate. Do not "fix" a read-time failure by loosening the validator. This gate is the deterministic backstop for the length limit; the writer and reviewer word-budgets are guidance, but this check is what actually holds the line.
+
 ## Step 8 — Ship the PR
 
 From inside `$WORKDIR`:
