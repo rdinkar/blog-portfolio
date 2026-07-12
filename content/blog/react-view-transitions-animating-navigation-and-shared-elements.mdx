@@ -1,0 +1,302 @@
+---
+title: "React View Transitions: Animating Navigation and Shared Elements with <ViewTransition>"
+description: "React View Transitions: animate navigation and shared elements with <ViewTransition>, no framer-motion, in React 19.2/Next.js 16"
+date: "2026-07-12"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/react-view-transitions-animating-navigation-and-shared-elements.svg"
+tags:
+  - react
+  - view-transitions
+  - animations
+  - nextjs
+  - frontend
+---
+
+![React View Transitions: animating navigation and shared elements between UI states](/blog-images/react-view-transitions-animating-navigation-and-shared-elements.svg)
+
+You click a thumbnail in a grid. The detail page loads. The image you were just looking at should grow smoothly into the hero at the top, the way a native app would do it.
+
+Instead it blinks out and a new one blinks in.
+
+For years, closing that gap in React meant one of two chores. You hand-rolled a FLIP animation, measuring the old rect, measuring the new rect, and animating the difference before the browser painted. Or you pulled in framer-motion and manually choreographed mount, unmount, and layout IDs across a route boundary. Both work. Both are a lot of coordination code for what is, conceptually, "make the old thing become the new thing."
+
+By the end of this post you'll know how to do that morph with zero animation JavaScript, using React's `<ViewTransition>` component, `startTransition`, and a few lines of CSS. You'll also know exactly where it belongs and where it does not, and the adoption caveat that actually matters if you're deciding whether to ship it.
+
+## The mechanism was never the hard part
+
+The browser already solved the mechanism. `document.startViewTransition(callback)` snapshots the current DOM, runs your callback that mutates the DOM, snapshots the result, and cross-fades between the two as images inside a `::view-transition-*` pseudo-element tree. You opt individual elements into continuity by giving them a CSS `view-transition-name`, and the browser tweens them from old position to new position for you.
+
+That API is Baseline now. Chrome and Edge shipped it in 111 back in March 2023, Safari in 18 in September 2024, and Firefox stabilized it in 144 on October 14, 2025. Same-document view transitions are Baseline Newly Available. This is not a bleeding-edge bet anymore.
+
+The hard part in React was never the animation. It was the timing. `startViewTransition` wants you to synchronously mutate the DOM inside its callback. React renders asynchronously, tears down subtrees when routes change, and reveals Suspense content whenever data resolves. Bolting the imperative browser API onto that by hand means reaching for `flushSync`, fighting the scheduler, and losing on every concurrent feature you actually wanted.
+
+`<ViewTransition>` fixes the timing problem, not the animation problem. It lets the framework decide what changed and when, and hands the browser API a clean before-and-after to animate between.
+
+## The mental model: What, When, How
+
+React frames this as three separate decisions, and keeping them separate is the whole trick.
+
+The **What** is markup. You wrap the thing that should animate in `<ViewTransition>`.
+
+The **When** is a scheduling primitive. A `<ViewTransition>` only activates when the state change that caused it is wrapped in `startTransition`, `useTransition`, `useDeferredValue`, or a `<Suspense>` boundary flipping from fallback to content. A plain `setState` does nothing.
+
+The **How** is CSS. You never write keyframes in JS. You style the generated pseudo-elements.
+
+That last split surprises people, so let's make the "When" concrete before anything else, because it's the number one reason a transition silently does nothing.
+
+## Why your transition does nothing (the setState trap)
+
+Here is the "hello world": cross-fade the content area when a tab changes.
+
+This looks correct and will not animate at all:
+
+```jsx
+import { ViewTransition } from 'react';
+
+function Dashboard() {
+  const [tab, setTab] = useState('overview');
+
+  return (
+    <>
+      <TabBar active={tab} onSelect={setTab} />
+      <ViewTransition default="auto">
+        <TabPanel tab={tab} />
+      </ViewTransition>
+    </>
+  );
+}
+```
+
+You wrapped the What. You styled nothing yet, but even the browser default cross-fade won't fire. The panel just swaps instantly.
+
+The reason is the When. `setTab` is a plain synchronous state update. React has no reason to treat it as a transition, so `<ViewTransition>` never activates. The fix is to tell React this update is a transition:
+
+```jsx
+import { ViewTransition, startTransition } from 'react';
+
+function Dashboard() {
+  const [tab, setTab] = useState('overview');
+
+  const selectTab = (next) => {
+    startTransition(() => {
+      setTab(next);
+    });
+  };
+
+  return (
+    <>
+      <TabBar active={tab} onSelect={selectTab} />
+      <ViewTransition default="auto">
+        <TabPanel tab={tab} />
+      </ViewTransition>
+    </>
+  );
+}
+```
+
+Now the update runs as a Transition, `<ViewTransition>` sees a DOM mutation inside its boundary, and the browser cross-fades. The `default="auto"` prop means "use the browser's default cross-fade for the update kind." If you want to control the timing, name the animation and write CSS:
+
+```jsx
+<ViewTransition default="cross-fade">
+  <TabPanel tab={tab} />
+</ViewTransition>
+```
+
+```css
+::view-transition-old(.cross-fade),
+::view-transition-new(.cross-fade) {
+  animation-duration: 300ms;
+  animation-timing-function: ease;
+}
+```
+
+React writes `view-transition-name` onto the element's inline styles for you. The class string you pass becomes the selector suffix, so `default="cross-fade"` is targetable as `::view-transition-group(.cross-fade)`, `::view-transition-old(.cross-fade)`, and so on. You style the transition, not the component.
+
+## Four activation kinds, and why "share" is the one you came for
+
+`<ViewTransition>` reacts to four things, and each maps to a prop and an event handler:
+
+- `enter` fires when the boundary is the first thing inserted during a Transition.
+- `exit` fires when it's the first thing deleted during a Transition.
+- `update` fires when the DOM inside it mutates, or its size or position changes.
+- `share` fires when a named `<ViewTransition>` in a deleted subtree matches a named one in an inserted subtree.
+
+That last one is the shared-element transition, the thumbnail-to-hero morph. And `share` takes precedence over `enter` and `exit`. When React finds the same `name` leaving on one side and arriving on the other, it treats them as the same element moving, not two separate elements fading.
+
+Here's the list-to-detail morph. On the grid:
+
+```jsx
+function ProductCard({ product }) {
+  return (
+    <Link href={`/products/${product.id}`}>
+      <ViewTransition name={`product-image-${product.id}`}>
+        <img src={product.thumbnail} alt={product.name} />
+      </ViewTransition>
+    </Link>
+  );
+}
+```
+
+On the detail page, the same name on the hero:
+
+```jsx
+function ProductDetail({ product }) {
+  return (
+    <article>
+      <ViewTransition name={`product-image-${product.id}`}>
+        <img src={product.hero} alt={product.name} />
+      </ViewTransition>
+      <h1>{product.name}</h1>
+    </article>
+  );
+}
+```
+
+As long as the navigation runs inside a Transition (in Next.js 16, client navigations already do), the browser tweens the thumbnail's rect into the hero's rect. Position, size, aspect ratio, all interpolated. There is no `useLayoutEffect`, no measuring, no layout ID registry.
+
+### The unique-name pitfall you will hit in a list
+
+Notice the name is `product-image-${product.id}`, not `product-image`. That matters. A view transition name must be globally unique among mounted `<ViewTransition>` components. If you render a grid with a hardcoded shared name:
+
+```jsx
+{products.map((product) => (
+  <ViewTransition key={product.id} name="product-image">
+    <img src={product.thumbnail} alt={product.name} />
+  </ViewTransition>
+))}
+```
+
+React throws: "There are two `<ViewTransition name=…>` components with the same name mounted at the same time." Twelve cards on screen means twelve identical names, which is ambiguous. React can't know which thumbnail should morph into the hero.
+
+Scope the name to the item and the ambiguity disappears:
+
+```jsx
+{products.map((product) => (
+  <ViewTransition key={product.id} name={`product-image-${product.id}`}>
+    <img src={product.thumbnail} alt={product.name} />
+  </ViewTransition>
+))}
+```
+
+Now only the card you clicked shares a name with the detail hero, so only that pair morphs. Everything else does its own enter or exit.
+
+## Direction-aware navigation with addTransitionType
+
+A cross-fade is fine for tabs. Real navigation has direction. Forward should slide left, back should slide right, and a single named animation can't express both because the boundary doesn't know why it changed.
+
+`addTransitionType` fixes that. You call it inside `startTransition` to tag the cause of the transition, then feed an object-valued animation prop keyed by that tag:
+
+```jsx
+import { ViewTransition, startTransition, addTransitionType } from 'react';
+
+function navigate(href, direction) {
+  startTransition(() => {
+    addTransitionType(direction === 'back' ? 'nav-back' : 'nav-forward');
+    router.push(href);
+  });
+}
+```
+
+```jsx
+<ViewTransition
+  enter={{ 'nav-forward': 'slide-left', 'nav-back': 'slide-right' }}
+  exit={{ 'nav-forward': 'slide-left', 'nav-back': 'slide-right' }}
+>
+  <RouteContent />
+</ViewTransition>
+```
+
+```css
+::view-transition-new(.slide-left) {
+  animation: slide-from-right 300ms ease;
+}
+::view-transition-old(.slide-left) {
+  animation: slide-to-left 300ms ease;
+}
+
+@keyframes slide-from-right {
+  from { transform: translateX(100%); }
+}
+@keyframes slide-to-left {
+  to { transform: translateX(-100%); }
+}
+```
+
+The tag flows through to the event callbacks too. Handlers receive `(instance, types)`, where `types` is the array you tagged, and `instance` exposes the live pseudo-elements as `instance.old`, `instance.new`, `instance.group`, and `instance.imagePair`. If you need to drop into the Web Animations API for something CSS can't express, `onEnter` is your hook, and it must return a cleanup function:
+
+```jsx
+<ViewTransition
+  onEnter={(instance, types) => {
+    if (!types.includes('nav-forward')) return;
+    const anim = instance.new.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 300 }
+    );
+    return () => anim.cancel();
+  }}
+>
+  <RouteContent />
+</ViewTransition>
+```
+
+## Reorders and Suspense reveals, where React 19.2 quietly earns its place
+
+The `update` kind covers list reordering. Pair `<ViewTransition>` with `useDeferredValue` on a filtered or sorted list and items animate to their new positions instead of jumping:
+
+```jsx
+function TransactionList({ query }) {
+  const deferredQuery = useDeferredValue(query);
+  const rows = useMemo(() => filterAndSort(deferredQuery), [deferredQuery]);
+
+  return (
+    <ul>
+      {rows.map((row) => (
+        <ViewTransition key={row.id} name={`txn-${row.id}`}>
+          <li>{row.label}</li>
+        </ViewTransition>
+      ))}
+    </ul>
+  );
+}
+```
+
+Because `useDeferredValue` schedules the recompute as a Transition, the position changes activate the boundaries, and the browser slides each row from its old spot to its new one.
+
+Suspense ties in on the reveal side. A `<ViewTransition>` wrapping a boundary animates when that boundary flips from fallback to content. This is where React 19.2, which shipped October 1, 2025, matters. React 19.2 did not add `<ViewTransition>` itself, but it added Suspense-reveal batching to prepare the ground: React now holds server-rendered Suspense reveals for a short window so more content appears together in one coordinated transition instead of a stutter of separate pops. It stops batching if your LCP approaches 2.5 seconds, so it won't trade away your Core Web Vitals for a prettier animation. React 19.2 also added the "Scheduler ⚛" and "Components ⚛" custom tracks in Chrome DevTools, which is genuinely how you debug why a transition did or didn't batch.
+
+## The responsible-defaults closer: reduced motion
+
+React does not automatically respect `prefers-reduced-motion`. This is a real gap, and shipping without handling it is an accessibility bug, not a nice-to-have. You add the guard yourself in CSS:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+```
+
+A few other sharp edges worth knowing before you ship. `<ViewTransition>` must sit before any DOM node in its subtree or `enter` and `exit` won't fire. Calling `flushSync` mid-update skips the animation entirely. Back and forward navigations through `popstate` skip animation so scroll and form restoration stay correct. And a transition waits up to 500ms for new fonts and images to load before it animates, which can read as lag if your hero image is slow.
+
+## My actual stance: this is not your animation library
+
+Here's the line I'll defend. `<ViewTransition>` is for structural UI changes: navigation, expanding and collapsing, opening panels, reordering. It is not a replacement for the CSS transitions on your buttons, toggles, and hover states, and reaching for it there is a mistake.
+
+This is React's own guidance, and it's correct. A hover color shift or a checkbox tick is a micro-interaction. It's cheap, it's local, and a plain CSS `transition` handles it with less machinery and no scheduling dependency. Route it through `<ViewTransition>` and you pay for DOM snapshotting and pseudo-element generation to animate something that never needed it. Use the right tool for the layer: view transitions for the big structural moves, CSS transitions for the small stuff.
+
+The counter-argument is real, so let me answer it. Someone will say a single unified animation system is simpler to reason about than two. In a small app, maybe. At scale, conflating "the whole route changed" with "this one button is hovered" is exactly the kind of over-generalization that makes an animation layer impossible to debug. Keep them separate.
+
+## The adoption caveat that decides whether you ship
+
+One distinction determines your call, and the docs are honest about it, so I will be too.
+
+The browser View Transitions API is Baseline. The React `<ViewTransition>` component is not in a stable numbered React release. It ships in `react@canary` and `react@experimental`, and React describes it as "tested in production and stable, but the final API may still change as we incorporate feedback." Next.js 16 stabilizes it for production use, so you can animate navigation without installing framer-motion, riding on the same release that made Turbopack the default bundler and React Compiler support stable.
+
+So the honest read is this. If you're on Next.js 16, the path is paved and framer-motion is deletable for navigation and shared-element work. If you're on a plain stable React release and unwilling to run canary, the component isn't available to you yet, and you're either waiting or using `document.startViewTransition` directly against the Baseline browser API.
+
+One more thing on reach. Same-document transitions, the ones covered here, work across Chrome, Edge, Safari 18, and Firefox 144. Cross-document (MPA) transitions via the `@view-transition` at-rule are Chromium-only, Chrome 126 and up, since June 2024. Firefox and Safari don't support cross-document yet. If your app is a single-page or client-navigated experience, that gap doesn't touch you. If you're animating full-page loads across a classic multi-page site, plan for Chromium-only for now.
+
+Wire up the What, trigger the When, style the How, add your reduced-motion guard, and delete the FLIP code you've been maintaining for three years. The morph you always wanted is now a wrapper and four lines of CSS.

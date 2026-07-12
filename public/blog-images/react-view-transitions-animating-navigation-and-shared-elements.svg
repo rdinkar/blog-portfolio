@@ -1,0 +1,51 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#2f2f2f"/>
+      <stop offset="100%" stop-color="#242424"/>
+    </radialGradient>
+    <linearGradient id="morph" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#61dafb"/>
+      <stop offset="100%" stop-color="#3aa7c9"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- LEFT STATE: grid of tiles, one highlighted -->
+  <g transform="translate(150 205)">
+    <g fill="none" stroke="#555" stroke-width="2">
+      <rect x="0"   y="0"   width="78" height="78" rx="10"/>
+      <rect x="98"  y="0"   width="78" height="78" rx="10"/>
+      <rect x="0"   y="98"  width="78" height="78" rx="10"/>
+      <rect x="98"  y="98"  width="78" height="78" rx="10"/>
+    </g>
+    <!-- the shared element in its small state -->
+    <rect x="0" y="0" width="78" height="78" rx="10" fill="url(#morph)"/>
+  </g>
+
+  <!-- MORPH FLOW: the same element growing across states -->
+  <g fill="none" stroke="#61dafb" stroke-opacity="0.5">
+    <path d="M228 244 C 430 200, 560 170, 720 200" stroke-width="2" stroke-dasharray="2 9" stroke-linecap="round"/>
+    <path d="M228 322 C 430 420, 560 460, 720 415" stroke-width="2" stroke-dasharray="2 9" stroke-linecap="round"/>
+  </g>
+
+  <!-- intermediate ghost frames of the morph -->
+  <g fill="none" stroke="#61dafb">
+    <rect x="360" y="243" width="120" height="120" rx="12" stroke-opacity="0.18"/>
+    <rect x="520" y="226" width="170" height="170" rx="14" stroke-opacity="0.30"/>
+  </g>
+
+  <!-- RIGHT STATE: detail view with the element as a hero -->
+  <g transform="translate(720 200)">
+    <rect x="0" y="0" width="330" height="230" rx="16" fill="none" stroke="#555" stroke-width="2"/>
+    <!-- the shared element in its large state -->
+    <rect x="24" y="24" width="282" height="120" rx="10" fill="url(#morph)"/>
+    <rect x="24" y="164" width="220" height="14" rx="7" fill="#4a4a4a"/>
+    <rect x="24" y="190" width="160" height="14" rx="7" fill="#3d3d3d"/>
+  </g>
+</svg>
