@@ -5,6 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import matter from "gray-matter";
 import readingTime from "reading-time";
 import { compileMDX } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import type { MDXComponents } from "mdx/types";
 
 export interface BlogPostFrontmatter {
@@ -157,6 +158,28 @@ const mdxComponents: MDXComponents = {
       className="max-w-full h-auto rounded-lg my-4"
     />
   ),
+  // GFM tables. Wrapped in an overflow-x container so wide tables scroll on
+  // narrow viewports instead of forcing the whole page to scroll sideways.
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-6">
+      <table className="w-full border-collapse text-sm text-[#242424]">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => <thead>{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => (
+    <tr className="border-b border-[#e6e6e6]">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="border border-[#e6e6e6] px-4 py-2 text-left font-bold align-top">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-[#e6e6e6] px-4 py-2 align-top">{children}</td>
+  ),
 };
 
 export async function compileBlogPost(content: string) {
@@ -164,6 +187,11 @@ export async function compileBlogPost(content: string) {
     source: content,
     options: {
       parseFrontmatter: false,
+      mdxOptions: {
+        // GFM adds pipe tables, strikethrough, task lists, and autolinks.
+        // Without it, a Markdown table renders as literal text with pipes.
+        remarkPlugins: [remarkGfm],
+      },
     },
     components: mdxComponents,
   });

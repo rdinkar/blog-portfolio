@@ -12,6 +12,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
 import { serialize } from "next-mdx-remote/serialize";
+import remarkGfm from "remark-gfm";
 
 const REQUIRED_AUTHOR = "Rahul Dinkar";
 // Hard read-time ceiling. This is the authoritative length gate and it is
@@ -144,10 +145,35 @@ for (const img of localImages) {
 }
 
 // --- MDX compiles (the actual site-breaking failure mode) ---
+// Compile with the SAME remark plugins the site renderer uses (src/lib/mdx.tsx),
+// so what passes here renders identically on the page. remark-gfm is what turns
+// Markdown pipe tables into real <table> elements; without it they render as
+// literal text with pipes.
+let compiledSource = "";
 try {
-  await serialize(content, { parseFrontmatter: false });
+  const result = await serialize(content, {
+    parseFrontmatter: false,
+    mdxOptions: { remarkPlugins: [remarkGfm] },
+  });
+  compiledSource = result.compiledSource ?? "";
 } catch (err) {
   errors.push(`MDX failed to compile: ${err.message}`);
+}
+
+// --- Tables must compile to a real <table> (defense-in-depth) ---
+// A GFM table is a header row followed by a delimiter row (| --- | --- |).
+// If the post contains that shape but the compiled output has no table element,
+// GFM support has regressed (e.g. remark-gfm removed from the pipeline) or the
+// table is malformed, and it would render as broken pipe-text on the site.
+// A rendered table emits a `_components.table` reference in the compiled
+// output; the bare word "table" in prose does not. Keying off the component
+// reference avoids false positives from prose or code that mentions "table".
+const hasTableSyntax = /^\s*\|.*\|.*\n\s*\|?[\s:]*-{3,}[\s:|-]*\|?\s*$/m.test(content);
+if (hasTableSyntax && compiledSource && !/\b_?components\.table\b/.test(compiledSource)) {
+  errors.push(
+    "Post contains a Markdown table but it did not compile to a <table> element. " +
+      "GFM table support has regressed (check remark-gfm in the MDX pipeline) or the table is malformed."
+  );
 }
 
 // --- Report ---
