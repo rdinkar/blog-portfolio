@@ -10,7 +10,8 @@
     "stats:ingest": "node scripts/ingest-stats.mjs",
     "stats:priors": "node scripts/gen-priors.mjs",
     "stats:update": "node scripts/ingest-stats.mjs && node scripts/gen-priors.mjs",
-    "test:validator": "node scripts/validate-post.test.mjs"
+    "test:validator": "node scripts/validate-post.test.mjs",
+    "test:pipeline-fresh": "node scripts/check-pipeline-fresh.test.mjs"
   },
   "dependencies": {
     "@next/mdx": "^16.1.6",
