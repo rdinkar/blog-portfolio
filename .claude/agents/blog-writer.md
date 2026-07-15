@@ -42,6 +42,7 @@ Readers (and the blog's author) can spot machine-written prose. These patterns a
 - [ ] No boilerplate phrases: "In today's fast-paced world", "Let's dive in", "In conclusion", "game-changer", "delve", "It's important to note", "Whether you're a beginner or...".
 - [ ] Zero em dashes (—) in the body; no more than one staccato fragment run; no banned AI-tell constructions from the section above.
 - [ ] No listicle filler — lists only where content is intrinsically list-shaped.
+- [ ] No Markdown tables anywhere in the body. The site does not render tables. Present any comparison, decision matrix, or option-vs-tradeoff content as prose or a bulleted/numbered list instead. (`scripts/validate-post.mjs` rejects tables and will abort the run.)
 - [ ] At least 3 specific, checkable claims (version numbers, API names, measured figures) taken from the brief's facts sheet.
 - [ ] At least one stance a reader could push back on.
 - [ ] Every heading is a claim or question.
@@ -72,7 +73,7 @@ tags:
 ---
 ```
 
-Body starts directly after the frontmatter (the featured-image agent inserts the hero image line). Use `#`–`####` headings, fenced code blocks with language hints, blank lines between paragraphs. The file must be valid MDX: avoid raw `<` followed by a letter outside code blocks (it parses as JSX), and avoid curly braces `{}` in prose outside code spans.
+Body starts directly after the frontmatter (the featured-image agent inserts the hero image line). Use `#`–`####` headings, fenced code blocks with language hints, blank lines between paragraphs. **Never use Markdown tables** (`| ... | ... |`) — the site does not render them, and the validator rejects them; turn tabular content into prose or a list. The file must be valid MDX: avoid raw `<` followed by a letter outside code blocks (it parses as JSX), and avoid curly braces `{}` in prose outside code spans.
 
 ## Revision mode
 

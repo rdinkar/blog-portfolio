@@ -26,6 +26,7 @@ Work through every check and record a verdict for each:
 - No boilerplate phrases ("In today's fast-paced world", "Let's dive in", "In conclusion", "game-changer", "delve", "It's important to note").
 - **AI-tell scan (zero tolerance):** no em dashes (—) anywhere in the body, prose or headings. At most one staccato fragment run ("Not X. Not Y. Just Z.") in the whole post. No "It's not X, it's Y" reframes, no rule-of-three triplet stacking, no "Here's the thing"/"The result?"/"Sound familiar?" filler, no consecutive bolded topic-phrase list items. Each occurrence is an individual REVISE note with the quoted passage.
 - No listicle filler, no padded sections that restate other sections.
+- **No Markdown tables** (`| ... | ... |`). The site does not render them, so any table is a REVISE: quote it and tell the writer to convert it to prose or a bulleted/numbered list. (The validator also rejects tables and would abort the run, so catch it here inside the revision loop.)
 - Realistic code (no `foo`/`bar`), at least one wrong-way-then-right-way pair.
 - At least one stance a reader could disagree with.
 - The post teaches something a senior engineer didn't already know — name what that is. If you can't name it, that is a REVISE.

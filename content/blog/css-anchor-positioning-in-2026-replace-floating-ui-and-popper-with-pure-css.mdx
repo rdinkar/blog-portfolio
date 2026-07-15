@@ -123,16 +123,14 @@ Two sharp edges to save you an afternoon. The anchor must be a visible DOM node:
 
 This is what separates "I read about a CSS feature" from "I decided the architecture." Four cases still belong to JS.
 
-| Case | Why CSS falls short | Reach for |
-| --- | --- | --- |
-| Virtualized / windowed lists | The anchor unmounts as it scrolls out; the tether has nothing to bind to | Floating UI with manual anchor tracking |
-| Deep nested / on-demand menus | Submenu position depends on lazily-loaded content the browser can't pre-resolve | JS positioning per submenu |
-| Cross-origin content in shadow DOM | Anchor references don't cross certain shadow / cross-origin boundaries | JS reading rects across the boundary |
-| Support below the polyfill floor | ~82% global support; if your users skew old, native isn't safe | `@oddbird/css-anchor-positioning` (~8KB) |
+1. Virtualized or windowed lists. The anchor unmounts as it scrolls out of view, so the tether has nothing to bind to. Keep Floating UI with manual anchor tracking.
+2. Deep or on-demand nested menus. A submenu's position depends on lazily-loaded content the browser can't pre-resolve, so position each submenu in JS.
+3. Cross-origin content in shadow DOM. Anchor references don't cross certain shadow and cross-origin boundaries, so you need JS reading rects across the boundary.
+4. Support below the polyfill floor. At ~82% global support, native isn't safe if your users skew old, so fall back to the `@oddbird/css-anchor-positioning` polyfill (~8KB).
 
 The virtualized list is the one people miss. In a react-window grid, a row scrolls out of the DOM and a popover tethered to that recycled row loses its anchor. Floating UI tracks coordinates against a rect as the node churns, so keep it on a giant virtualized table.
 
-On the polyfill row, be honest: at ~82% support, "Baseline" is not "all your users." The OddBird polyfill covers older browsers at about 8KB, well below a 30KB dependency.
+On that last case, be honest: at ~82% support, "Baseline" is not "all your users." The OddBird polyfill covers older browsers at about 8KB, well below a 30KB dependency.
 
 ## Delete the dependency, keep the judgment
 

@@ -127,6 +127,30 @@ if (emDashCount > 0) {
   errors.push(`Body contains ${emDashCount} em dash(es) (—) outside code blocks; restructure those sentences.`);
 }
 
+// --- Markdown tables are not allowed (the site deliberately does not render
+// them). Detect a GFM table by its delimiter row: a header line containing a
+// pipe immediately followed by a line of only pipes/dashes/colons/spaces with a
+// 3+ dash run. Run against `prose` (code fences already stripped) so a table
+// shown inside a code example is not flagged. ---
+const proseLines = prose.split("\n");
+let hasTable = false;
+for (let i = 0; i < proseLines.length - 1; i++) {
+  const header = proseLines[i];
+  const delim = proseLines[i + 1];
+  const isDelimiterRow =
+    /\|/.test(delim) && /^[ \t|:-]+$/.test(delim) && /-{3,}/.test(delim);
+  if (isDelimiterRow && header.trim() !== "" && /\|/.test(header)) {
+    hasTable = true;
+    break;
+  }
+}
+if (hasTable) {
+  errors.push(
+    "Markdown table detected. Tables are not allowed in blog posts (the site does " +
+      "not render them). Convert tabular content to prose or a bulleted/numbered list."
+  );
+}
+
 // --- Local images exist (frontmatter image + body images starting with "/") ---
 const repoRoot = path.resolve(path.dirname(filePath), "..", "..");
 const localImages = new Set();
