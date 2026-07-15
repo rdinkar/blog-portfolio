@@ -27,8 +27,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Validator unit tests
-        run: npm run test:validator
+      - name: Unit tests
+        # Run every test suite in scripts/, so new *.test.mjs files (e.g. the
+        # pipeline-freshness guard) are picked up without editing this workflow.
+        run: |
+          shopt -s nullglob
+          for t in scripts/*.test.mjs; do
+            echo "::group::$t"
+            node "$t" || exit 1
+            echo "::endgroup::"
+          done
 
       - name: Validate changed blog posts
         if: github.event_name == 'pull_request'
