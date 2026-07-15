@@ -17,6 +17,13 @@ The default is **one strong post per week.** Multiple posts per ISO week are *al
 
 1. Compute the ISO week key: `WEEK=$(date +%G-W%V)` and today's date `TODAY=$(date +%Y-%m-%d)`. `WEEK` is only used to prefix the branch name in Step 8; it does **not** cap how many posts a week can have.
 2. `git fetch origin main` (also verifies network/auth — if this fails, stop and report).
+3. **Staleness gate — abort if the local checkout is behind `origin/main` on any pipeline definition.** The agents (researcher/writer/seo-optimizer/reviewer) and this skill are loaded from the **local checkout** at session start, *not* from the worktree created in Step 1. So if the checkout has drifted behind `origin/main`, the run silently uses stale instructions — e.g. old SEO/tag criteria — even though the worktree content is fresh. This has shipped generic Medium tags before. Run the guard (a real, tested script, not an inline snippet, so it can't silently rot):
+
+   ```sh
+   node scripts/check-pipeline-fresh.mjs   # exit 1 => stale, abort; run after the fetch above
+   ```
+
+   If it exits non-zero, **stop and report the stale files it lists as the abort reason — do not proceed.** Reconcile with `git merge --ff-only origin/main` (or rebase local changes) in the repo root, then re-run. A skipped run beats a run on stale criteria. (The script's own behavior is covered by `scripts/check-pipeline-fresh.test.mjs`.)
 
 Multiple posts per ISO week are allowed, so there is no week-level idempotency gate. Each run picks a fresh topic (Step 2) and produces its own slug and branch; the researcher avoids duplicating existing posts. If a run produces a slug that collides with an existing `blog/${WEEK}-<slug>` branch, Step 8's push will fail — pick a more specific slug and retry rather than overwriting.
 
