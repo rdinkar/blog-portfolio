@@ -1,0 +1,141 @@
+---
+title: "CSS Anchor Positioning in 2026: Replace Floating UI and Popper.js with Pure CSS"
+description: "CSS anchor positioning replaces Floating UI and Popper. Build tooltips, menus, and popovers with position-area and @position-try"
+date: "2026-07-15"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/css-anchor-positioning-in-2026-replace-floating-ui-and-popper-with-pure-css.svg"
+tags:
+  - css
+  - browser
+  - frontend
+  - web-platform
+  - performance
+---
+
+![CSS Anchor Positioning in 2026: Replace Floating UI and Popper.js with Pure CSS](/blog-images/css-anchor-positioning-in-2026-replace-floating-ui-and-popper-with-pure-css.svg)
+
+For a decade you have shipped JavaScript to answer one question: where does this box go?
+
+A tooltip, a dropdown, a select menu. You install Floating UI or Popper.js, wire a ref, call `useFloating`, and run an effect that recomputes coordinates on every scroll and resize. That's 10 to 30KB of bundle doing geometry the browser already knows. This year you can delete most of it, and by the end you'll know how and the exact cases where you shouldn't.
+
+The feature isn't new: Chrome shipped it in 125. What changed is Firefox 147 enabling it by default in stable on January 13, 2026. With Safari 26 and Chrome/Edge already shipping, it went from "Chrome experiment you polyfill" to Baseline 2026. caniuse reports roughly 82% global support; some write-ups quote ~91% traffic coverage. I'll use the conservative number, since that gap decides the migration call.
+
+Here is the stance I'll defend: pure CSS is now the correct default for floating UI, and reaching for a positioning library should be a justified decision, not a reflex. Four cases still make JS the right call, and a senior engineer should name them cold.
+
+## What is your positioning library actually doing?
+
+Strip the API away and every JS library does three jobs: read the trigger's rectangle and the viewport, compute the panel's coordinates, and re-run whenever anything moves. On top sit middleware like `flip`, `size`, and `shift`. Here is the React tooltip everyone recognizes, above a button and flipping below when there's no room:
+
+```tsx
+import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
+import { useState } from 'react';
+
+function InfoTooltip({ label }: { label: string }) {
+  const [open, setOpen] = useState(false);
+  const { refs, floatingStyles } = useFloating({
+    open,
+    placement: 'top',
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  return (
+    <>
+      <button
+        ref={refs.setReference}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        Billing details
+      </button>
+      {open && (
+        <div ref={refs.setFloating} style={floatingStyles} role="tooltip">
+          {label}
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+Nothing here is wrong. But count the cost: a client component, two refs, hand-managed state, event handlers, and `autoUpdate` measuring on a scroll listener the whole time it's mounted. Multiply that across a dense dashboard: a lot of JavaScript for a geometry question.
+
+Now the zero-JS version. Pair anchor positioning with the Popover API (Baseline since January 2025): `popovertarget` wires the trigger to the panel, and the `popover` attribute gives you toggling, Escape-to-dismiss, and top-layer rendering, no script.
+
+```html
+<button popovertarget="billing-tip">Billing details</button>
+<div id="billing-tip" popover class="tooltip">
+  Charged on the 1st of each month.
+</div>
+```
+
+```css
+.tooltip {
+  /* popovertarget creates an implicit anchor */
+  position-area: top;
+  justify-self: anchor-center;
+  position-try-fallbacks: flip-block; /* native flip() */
+  margin: 0 0 8px;
+}
+```
+
+That is the parity line. `position-area: top` is `placement: 'top'`. `justify-self: anchor-center` is the centering `autoUpdate` recomputed. `position-try-fallbacks: flip-block` is `flip()`: on overflow it tries the mirrored position below. No refs, no state, no scroll listener, no client component. On a Next.js page the tooltip leaves the client bundle entirely.
+
+One caveat: the implicit anchor only works when the trigger *is* the anchor. The moment they differ, declare `anchor-name` and bind with `position-anchor`.
+
+## How do you match a panel to its trigger's width?
+
+Floating UI's `size` middleware mostly exists for one job: making a dropdown as wide as the input that opened it. By hand that's a `ResizeObserver` feeding width into state on every resize. `anchor-size()` resolves to a dimension of the anchor, so the panel tracks the trigger with no observer:
+
+```css
+.combobox-trigger { anchor-name: --region-select; }
+
+.combobox-panel {
+  position-anchor: --region-select;
+  position-area: bottom;
+  min-width: anchor-size(width); /* never shrink below the trigger */
+}
+```
+
+That small diff removes a whole category of layout bugs.
+
+## How does collision handling map to CSS?
+
+A popover crammed against a viewport edge is the real test. Floating UI answers with a middleware stack; CSS answers with named `@position-try` blocks and an ordered fallback list, applying the first option that stays on screen:
+
+```css
+@position-try --shift-up { position-area: top; }
+
+.popover-card {
+  position-anchor: --card-trigger;
+  position-area: bottom;
+  position-try-fallbacks: flip-block, flip-inline, --shift-up;
+  position-try-order: most-height; /* prefer the roomiest fallback */
+}
+```
+
+Read it as a decision tree: start below, mirror above (`flip-block`), mirror across the inline axis (`flip-inline`), then fall back to the custom position. `flip()`, `size()`, `offset()`, and `hide()` all have direct CSS counterparts. The exception is `shift()`, which slides the panel along its axis without changing sides. CSS switches to a whole named position instead of nudging, so if you need pixel-level sliding, keep JS.
+
+Two sharp edges to save you an afternoon. The anchor must be a visible DOM node: if it's `display: none`, the panel positions against its nearest positioned ancestor. And when two elements share an `anchor-name`, the panel binds to the *last* in source order, so in a `.map()` every popover tethers to the final row; use `anchor-scope` to isolate the subtree.
+
+## When should you still reach for JavaScript?
+
+This is what separates "I read about a CSS feature" from "I decided the architecture." Four cases still belong to JS.
+
+| Case | Why CSS falls short | Reach for |
+| --- | --- | --- |
+| Virtualized / windowed lists | The anchor unmounts as it scrolls out; the tether has nothing to bind to | Floating UI with manual anchor tracking |
+| Deep nested / on-demand menus | Submenu position depends on lazily-loaded content the browser can't pre-resolve | JS positioning per submenu |
+| Cross-origin content in shadow DOM | Anchor references don't cross certain shadow / cross-origin boundaries | JS reading rects across the boundary |
+| Support below the polyfill floor | ~82% global support; if your users skew old, native isn't safe | `@oddbird/css-anchor-positioning` (~8KB) |
+
+The virtualized list is the one people miss. In a react-window grid, a row scrolls out of the DOM and a popover tethered to that recycled row loses its anchor. Floating UI tracks coordinates against a rect as the node churns, so keep it on a giant virtualized table.
+
+On the polyfill row, be honest: at ~82% support, "Baseline" is not "all your users." The OddBird polyfill covers older browsers at about 8KB, well below a 30KB dependency.
+
+## Delete the dependency, keep the judgment
+
+Open your bundle analyzer, find Floating UI or Popper, and audit what it positions. If it's panels tethered to their own triggers, delete the import this week: `position-area`, `@position-try`, and the Popover API do the job with less code and better dismissal defaults. If it's a virtualized grid, leave it, and explain why in one sentence instead of hand-waving.
+
+The browser learned to answer "where does this box go?" You get to stop shipping the answer.
