@@ -1,0 +1,61 @@
+name: Validate
+
+# Enforced validation for blog PRs. Runs on GitHub regardless of what any local
+# agent or human did, so the pipeline's content rules (no tables, no em dashes,
+# read-time ceiling, valid frontmatter/MDX) cannot be bypassed by skipping the
+# local validator. This is the layer that backs the writer/reviewer instructions.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        # Run every test suite in scripts/, so new *.test.mjs files (e.g. the
+        # pipeline-freshness guard) are picked up without editing this workflow.
+        run: |
+          shopt -s nullglob
+          for t in scripts/*.test.mjs; do
+            echo "::group::$t"
+            node "$t" || exit 1
+            echo "::endgroup::"
+          done
+
+      - name: Validate changed blog posts
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "$BASE_REF" --quiet
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" -- 'content/blog/*.mdx' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No blog posts changed in this PR."
+            exit 0
+          fi
+          FAIL=0
+          for f in $CHANGED; do
+            # Skip posts deleted in this PR; only validate ones that still exist.
+            if [ -f "$f" ]; then
+              echo "::group::Validating $f"
+              node scripts/validate-post.mjs "$f" || FAIL=1
+              echo "::endgroup::"
+            fi
+          done
+          exit $FAIL
