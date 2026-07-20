@@ -1,0 +1,52 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#2b2b2b"/>
+      <stop offset="100%" stop-color="#242424"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#5b6b7a"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- state machine -->
+  <g transform="translate(0,232)">
+    <!-- pending node -->
+    <circle cx="290" cy="0" r="58" fill="none" stroke="#8a97a3" stroke-width="2" stroke-dasharray="4 6"/>
+    <text x="290" y="6" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="21" fill="#c9d1d9">pending</text>
+
+    <!-- transition lines -->
+    <path d="M350 -18 Q470 -70 596 -70" fill="none" stroke="#5b6b7a" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M350 18 Q470 70 596 70" fill="none" stroke="#5b6b7a" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- fulfilled node -->
+    <circle cx="660" cy="-70" r="58" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+    <text x="660" y="-64" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="19" fill="#4ade80">fulfilled</text>
+
+    <!-- rejected node -->
+    <circle cx="660" cy="70" r="58" fill="none" stroke="#f87171" stroke-width="2.5"/>
+    <text x="660" y="76" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="19" fill="#f87171">rejected</text>
+
+    <text x="470" y="-92" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="#8a97a3">resolve</text>
+    <text x="470" y="112" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="#8a97a3">reject</text>
+  </g>
+
+  <!-- title -->
+  <text x="80" y="118" font-family="Inter, -apple-system, sans-serif" font-size="30" font-weight="600" letter-spacing="0.5" fill="#4ade80">JavaScript · from scratch</text>
+  <text x="80" y="470" font-family="Inter, -apple-system, sans-serif" font-size="66" font-weight="700" fill="#f5f5f5">Implement a Promise</text>
+  <text x="80" y="546" font-family="Inter, -apple-system, sans-serif" font-size="66" font-weight="700" fill="#f5f5f5">from scratch</text>
+
+  <!-- microtask dots -->
+  <g fill="#4ade80" opacity="0.55">
+    <circle cx="960" cy="190" r="4"/>
+    <circle cx="988" cy="190" r="4"/>
+    <circle cx="1016" cy="190" r="4"/>
+  </g>
+  <text x="960" y="228" font-family="Inter, -apple-system, sans-serif" font-size="14" fill="#8a97a3">microtask queue</text>
+</svg>

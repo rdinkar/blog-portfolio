@@ -1,0 +1,188 @@
+---
+title: "How to Implement a Promise from Scratch in JavaScript (then, catch, finally, all, race)"
+description: "Build a Promise from scratch: state machine, queueMicrotask scheduling, thenable flattening, plus Promise.withResolvers and try()"
+date: "2026-07-20"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/how-to-implement-a-promise-from-scratch-in-javascript.svg"
+tags:
+  - javascript
+  - interviews
+  - coding-challenges
+  - async
+---
+
+![How to Implement a Promise from Scratch in JavaScript (then, catch, finally, all, race)](/blog-images/how-to-implement-a-promise-from-scratch-in-javascript.svg)
+
+You can chain `.then()` in your sleep. The interview follow-up is where it gets real.
+
+Why does a `.then()` callback fire asynchronously even when the promise had already resolved before you attached the handler? Why does returning a promise from `.then()` flatten the result instead of handing you a promise wrapped in a promise? Build the primitive and both answers fall out for free, which is exactly what this question probes.
+
+So we will build `MyPromise` end to end: the state machine, microtask scheduling, thenable assimilation, `then`/`catch`/`finally`, and the combinators. We will use the two APIs most "implement a Promise" tutorials predate, `Promise.withResolvers()` and `Promise.try()`, because a 2026 candidate is expected to reach for them. I'll type it in TypeScript, since generics force you to be honest about what flows through each handler.
+
+## A promise is a state machine that settles once
+
+Three states: `pending`, `fulfilled`, `rejected`. Once it leaves pending it never moves again. That "settles exactly once" guard is the first signal an interviewer looks for.
+
+```ts
+type State = "pending" | "fulfilled" | "rejected";
+
+class MyPromise<T> {
+  private state: State = "pending";
+  private value: any;
+  private queue: Array<() => void> = [];
+
+  constructor(
+    executor: (resolve: (v: T | PromiseLike<T>) => void, reject: (e: any) => void) => void,
+  ) {
+    const settle = (state: State, value: any) => {
+      if (this.state !== "pending") return;   // settle once
+      this.state = state;
+      this.value = value;
+      this.queue.forEach((fn) => queueMicrotask(fn));
+      this.queue = [];
+    };
+    const resolve = (v: any) => {
+      if (v && (typeof v === "object" || typeof v === "function") && typeof v.then === "function") {
+        v.then(resolve, reject);               // adopt thenable (flatten)
+      } else {
+        settle("fulfilled", v);
+      }
+    };
+    const reject = (e: any) => settle("rejected", e);
+
+    try {
+      executor(resolve, reject);
+    } catch (e) {
+      reject(e);                               // sync throw in the executor rejects
+    }
+  }
+}
+```
+
+Two lines carry the weight. `settle` bails if the state is already set, so a second `resolve()` does nothing. And `resolve` routes any thenable back through itself, which is how a resolved promise adopts another promise's outcome instead of nesting it.
+
+## Why the handler must fire asynchronously
+
+Here is the version most people write first:
+
+```ts
+then(onFulfilled) {
+  if (this.state === "fulfilled") onFulfilled(this.value); // fires synchronously
+}
+```
+
+It looks correct, and it breaks the ordering guarantee the spec makes. A `then` handler always runs after the current synchronous code, as a microtask, even when the promise is already settled.
+
+```ts
+const p = new MyPromise((r) => r(1));
+p.then(() => console.log("handler"));
+console.log("after then");
+// spec order:      after then, then handler
+// the buggy code:  handler, then after then  (wrong)
+```
+
+The fix is to never invoke a handler inline. Queue it while pending, and flush the queue through `queueMicrotask` on settle. Microtasks run after the current task finishes but before the event loop yields to the next render, which keeps ordering deterministic.
+
+## then returns a new promise, and that is the whole trick
+
+`then` returns a brand new `MyPromise` that starts pending, even when the source is already settled.
+
+```ts
+then<R>(onFulfilled?: (v: T) => R | PromiseLike<R>, onRejected?: (e: any) => any): MyPromise<R> {
+  return new MyPromise<R>((resolve, reject) => {
+    const run = () => {
+      const cb = this.state === "fulfilled" ? onFulfilled : onRejected;
+      if (typeof cb !== "function") {
+        // no handler: pass the settlement through
+        this.state === "fulfilled" ? resolve(this.value as any) : reject(this.value);
+        return;
+      }
+      try {
+        resolve(cb(this.value));   // resolve() flattens a returned thenable
+      } catch (e) {
+        reject(e);                 // a throw rejects the next promise
+      }
+    };
+    this.state === "pending" ? this.queue.push(run) : queueMicrotask(run);
+  });
+}
+```
+
+The flattening lives entirely in `resolve` from the constructor. If a handler returns a thenable, we adopt its state instead of wrapping it, which is why long chains stay flat.
+
+`catch` is not special, and saying so out loud scores points: it is `then(null, onRejected)`. And `finally` runs its callback but forwards the original value or reason untouched, so it can never swallow a result or hide a rejection.
+
+```ts
+catch(onRejected: (e: any) => any) {
+  return this.then(undefined, onRejected);
+}
+
+finally(cb: () => void) {
+  return this.then(
+    (v) => { cb(); return v; },
+    (e) => { cb(); throw e; },
+  );
+}
+```
+
+## The combinators are just completion counters
+
+`all` fulfills with an ordered array or rejects on the first rejection. The trap is ordering: results have to land by index, not by arrival time.
+
+```ts
+static all<T>(items: MyPromise<T>[]): MyPromise<T[]> {
+  return new MyPromise((resolve, reject) => {
+    const results: T[] = [];
+    let done = 0;
+    if (items.length === 0) return resolve(results);   // empty iterable fulfills now
+    items.forEach((item, i) => {
+      item.then((value) => {
+        results[i] = value;                            // by index, never by order
+        if (++done === items.length) resolve(results);
+      }, reject);                                       // first rejection wins
+    });
+  });
+}
+```
+
+The other three share the shape with a different settle condition. `race` settles as soon as the first input settles, either way. `any` fulfills on the first success and rejects with an `AggregateError` only when every input fails. `allSettled` never rejects; it maps each input to a `{ status, value }` or `{ status, reason }` object. Write `all` and you have written all four.
+
+## The 2026 refactor: stop hand-rolling deferreds
+
+Older tutorials reach for the "deferred" pattern when the resolver has to escape the executor scope, say for an event-driven queue:
+
+```ts
+let resolve, reject;
+const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+```
+
+That leaks `let` bindings and a closure just to move two functions out. `Promise.withResolvers()` returns them directly:
+
+```ts
+const { promise, resolve, reject } = Promise.withResolvers<string>();
+```
+
+It reached Baseline newly available on 2024-03-05 (Chrome 119, Firefox 121, Safari 17.4) and is projected widely available on 2026-09-05.
+
+The other trap is subtler. A utility that runs a user-supplied callback this way silently loses synchronous throws:
+
+```ts
+function run<T>(cb: () => T) {
+  return new Promise<T>((resolve) => resolve(cb())); // if cb() throws sync, it escapes
+}
+```
+
+The throw happens before `resolve` is even reached, so it propagates out of `run` instead of becoming a rejection. `Promise.try()`, Baseline since 2025-01-07, closes the hole and forwards arguments too:
+
+```ts
+function run<T>(cb: () => T) {
+  return Promise.try(cb); // sync throw becomes a rejection; paths behave alike
+}
+```
+
+## What this actually demonstrates
+
+Building the primitive is not busywork the interviewer invented to watch you sweat. Each piece maps to a claim about your mental model: the settle guard says you know a promise is a one-way state machine, `queueMicrotask` says you know where promise callbacks sit in the event loop, and the thenable branch says you know why chaining flattens.
+
+Write it by hand once and `.then()` stops being a black box. Then land the part most candidates miss: the idiomatic 2026 answer no longer hand-rolls a deferred, and it treats `new Promise(r => r(cb()))` as a bug waiting for a synchronous throw.
