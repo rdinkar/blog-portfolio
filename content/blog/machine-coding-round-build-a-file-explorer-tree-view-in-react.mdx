@@ -1,0 +1,136 @@
+---
+title: "Machine Coding Round: Build a File Explorer (Tree View) in React"
+description: "React file explorer tree machine coding round: normalized byId state, immutable deep updates, ARIA tree keyboard nav, react-arborist."
+date: "2026-07-22"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/machine-coding-round-build-a-file-explorer-tree-view-in-react.svg"
+tags:
+  - machine-coding
+  - react
+  - interviews
+  - accessibility
+  - frontend
+---
+
+![Machine Coding Round: Build a File Explorer (Tree View) in React](/blog-images/machine-coding-round-build-a-file-explorer-tree-view-in-react.svg)
+
+The file explorer ends more senior interviews than it should. You render nested folders recursively in about ten minutes, feel good about yourself, and then the interviewer says "rename this folder six levels deep." That request is where the round is actually scored.
+
+By the end of this you will know the three things interviewers grade once the tree is on screen: updating one deep node without re-rendering the whole tree, keyboard navigation that follows the ARIA tree spec, and surviving ten thousand nodes. All three trace back to one data-modelling decision you make in the first five minutes.
+
+## The time budget the round actually runs on
+
+A machine coding round is a live build in a fixed window, usually 60 to 90 minutes. GreatFrontend's suggested split: 5 to 10 minutes to clarify scope, about 5 to sketch components and state, 30 to 45 on the core path, 10 to 15 on edge cases, then a final 5 to 10 to test and explain trade-offs.
+
+The recursive render is the fast part. The score comes from state design, accessibility, and performance, which are exactly the parts panicked candidates skip.
+
+## The recursive render is the easy 20 percent
+
+Here is the version almost everyone writes. It renders, and it will quietly cost you the round.
+
+```jsx
+function TreeNode({ node }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li role="treeitem" aria-expanded={node.children ? open : undefined}>
+      <span onClick={() => setOpen((o) => !o)}>{node.name}</span>
+      {open && node.children && (
+        <ul role="group">
+          {node.children.map((child) => (
+            <TreeNode key={child.id} node={child} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+```
+
+The roles are right. The problem is `useState` per node. Expand state is now scattered across the component tree, so "expand all", selection, and roving keyboard focus have nowhere central to live. You cannot coordinate what you cannot address. (Watch the circular-import trap too: if a `Branch` and `Node` file import each other, keep both in one module.)
+
+## Normalize the tree before you write a single handler
+
+This is the opinion the round is testing for. Do not keep a deeply nested object. Flatten it into a map keyed by id, with `childIds` arrays and root ids on the side.
+
+```js
+const tree = {
+  rootIds: ["src", "public"],
+  byId: {
+    src:  { id: "src",  name: "src",     type: "folder", childIds: ["app"], open: true },
+    app:  { id: "app",  name: "App.tsx", type: "file",   childIds: [] },
+    // ...
+  },
+};
+```
+
+The Redux maintainers recommend this shape for exactly one reason: every mutation becomes O(1) and addressable by id. Toggling `open` on a node is a single-key write against `byId`, no traversal, no matter how deep the node sits.
+
+## Renaming a node six levels deep, the wrong way and the right way
+
+With the nested object, renaming a buried node means rebuilding every ancestor by hand. This is the spread pyramid, and it is where bugs and blank stares happen.
+
+```js
+// rename root.children[2].children[0].children[4]... good luck
+setTree((t) => ({
+  ...t,
+  children: t.children.map((c) =>
+    c.id !== "src" ? c : { ...c, children: c.children.map(/* and on, and on */) }
+  ),
+}));
+```
+
+With the normalized map, depth is irrelevant. You touch one key.
+
+```js
+setTree((t) => ({ ...t, byId: { ...t.byId, [id]: { ...t.byId[id], name } } }));
+```
+
+Immer's `produce` gets you the same immutable result with mutation-style syntax if you prefer nesting. But the flat map wins on the metric interviewers watch: wrap `TreeNode` in `React.memo`, have each node read itself by id, and a rename re-renders one row instead of the whole subtree. The spread pyramid rebuilds ancestor objects, so memo cannot save it.
+
+## Keyboard navigation is where the accessibility points hide
+
+Because expand state now lives in one place, you can compute a flat list of currently visible nodes. That list turns arrow navigation into index math and gives you one roving `tabindex={0}` on the focused item.
+
+The ARIA tree keyboard model is specific, and reciting it signals you have shipped this before. Right arrow opens a closed node, otherwise moves to the first child. Left arrow closes an open node, otherwise moves to the parent. Up and Down move between visible nodes without changing expansion. Home and End jump to the first and last visible node.
+
+```jsx
+function onKeyDown(e) {
+  const i = visible.findIndex((n) => n.id === focusedId);
+  const node = byId[focusedId];
+  switch (e.key) {
+    case "ArrowDown": setFocus(visible[i + 1]?.id); break;
+    case "ArrowUp":   setFocus(visible[i - 1]?.id); break;
+    case "ArrowRight":
+      node.open ? setFocus(node.childIds[0]) : toggleOpen(node.id); break;
+    case "ArrowLeft":
+      node.open ? toggleOpen(node.id) : setFocus(node.parentId); break;
+  }
+}
+```
+
+Use `role="tree"` on the container, `treeitem` per node, `group` on a child list, and `aria-expanded` on folders. Once children load dynamically you also owe `aria-level`, `aria-setsize`, and `aria-posinset`, since the DOM alone no longer tells a screen reader where a node sits.
+
+## Scaling means lazy children and windowed rows
+
+Two moves survive a huge repo. Load folder contents only on first expand, and guard against stale responses when someone expands, collapses, and re-expands fast.
+
+```js
+async function expand(id) {
+  toggleOpen(id);
+  if (byId[id].loaded || byId[id].loading) return;
+  const reqId = ++latest.current;
+  setLoading(id, true);
+  const kids = await fetchChildren(id);
+  if (reqId !== latest.current) return; // a newer request won; drop this one
+  addChildren(id, kids);
+}
+```
+
+Handling that race, rather than pretending network calls resolve in order, is a named senior signal. For raw size, virtualize. The flat visible list makes windowing natural, and `react-arborist` renders only on-screen rows while staying smooth past tens of thousands of nodes. Reach for it once the tree is large, not on the first line, because the interviewer wants to see you reason about when it earns its cost.
+
+## What separates the pass from the fail
+
+The recursive render is the audition. It proves nothing except that you know React renders itself.
+
+The score lives in the shape of your state. Pick the normalized map in the first five minutes and immutable updates, memoized rows, roving focus, and virtualization all fall out of it almost for free. Pick nested objects and you spend the back half of the round fighting spread pyramids while the accessibility checklist goes untouched. Decide the data model before you write a handler, and say why out loud. That sentence is the one the interviewer writes down.
