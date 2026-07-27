@@ -1,0 +1,134 @@
+---
+title: "React List Virtualization from Scratch: Windowing, TanStack Virtual, and CSS content-visibility (2026)"
+description: "Hand-roll React windowing, then pick between TanStack Virtual and CSS content-visibility with a rule for when each keeps memory flat"
+date: "2026-07-27"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/react-list-virtualization-from-scratch-windowing-tanstack-virtual-and-css-content-visibility.svg"
+tags:
+  - react
+  - performance
+  - virtualization
+  - interview
+  - frontend
+---
+
+![React List Virtualization from Scratch: Windowing, TanStack Virtual, and CSS content-visibility (2026)](/blog-images/react-list-virtualization-from-scratch-windowing-tanstack-virtual-and-css-content-visibility.svg)
+
+The prompt says "render 10,000 rows without jank," you have 60 minutes, and your first instinct is to type `import { FixedSizeList } from "react-window"`. In a senior machine coding round, that is the moment you lose points. The interviewer wanted to watch you derive the scroll math, not memorize an import.
+
+So let's derive it. By the end you'll be able to hand-roll windowing, know exactly where the naive version cracks, and pick the right production tool between TanStack Virtual and CSS `content-visibility` with a rule you can defend out loud.
+
+## The one idea: render what fits, fake the rest
+
+A viewport shows maybe 20 to 40 rows. Virtualization renders only those and recycles them as you scroll, so the DOM holds a small constant number of nodes instead of all N. Everything else is scroll math.
+
+You need a scroll container, a spacer sized to the full list so the scrollbar is honest, and an absolutely positioned slice pushed into place with `translateY`.
+
+```jsx
+function VirtualList({ items, rowHeight = 40, height = 400 }) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const overscan = 5;
+
+  const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+  const visible = Math.ceil(height / rowHeight) + overscan * 2;
+  const end = Math.min(items.length, start + visible);
+
+  return (
+    <div style={{ height, overflow: "auto" }}
+         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}>
+      <div style={{ height: items.length * rowHeight, position: "relative" }}>
+        {items.slice(start, end).map((item, i) => (
+          <div key={start + i}
+               style={{
+                 position: "absolute",
+                 transform: `translateY(${(start + i) * rowHeight}px)`,
+                 height: rowHeight,
+               }}>
+            {item.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+That is windowing. Twenty lines, no dependency.
+
+## Why the first version flashes blank when you flick
+
+Drop the `overscan` and scroll fast. You get white gaps at the leading edge. React commits a frame late, so by the time the new slice paints, the user has already scrolled past it into rows that were never rendered.
+
+`overscan` is the fix, and it is the whole reason the constant is there. Render a few extra rows above and below the viewport so the buffer absorbs the lag. Five each way is usually enough. This is not a magic number in a library, it is the seam you just closed by hand.
+
+## Where the math breaks: rows that aren't all the same height
+
+`Math.floor(scrollTop / rowHeight)` only works because every row is identical. The instant a row wraps to two lines or holds an image of unknown size, the assumption dies. You cannot divide by a height that varies per row.
+
+The fix is a measured-offset cache. Render a row, read its real height, and keep a running sum of cumulative offsets.
+
+```js
+const offsets = [];
+let acc = 0;
+for (let i = 0; i < heights.length; i++) {
+  offsets[i] = acc;      // pixel offset where row i starts
+  acc += heights[i];
+}
+// first visible row = first offset >= scrollTop (binary search, not floor)
+```
+
+Now `start` comes from a binary search over `offsets` instead of a division, and the spacer height is the final `acc` instead of `items.length * rowHeight`. This is fiddly to get right under interview pressure, which is exactly the point: you have now earned the right to reach for a library, because you can explain what it does.
+
+## The same list in TanStack Virtual, mapped back to your code
+
+`useVirtualizer` encodes every fix above. `count` is your `items.length`, `estimateSize` is the initial guess that replaces a fixed `rowHeight`, `overscan` is the same buffer, and `measureElement` is the measured-offset cache you just wrote by hand. `getVirtualItems()` hands back the visible slice with a `start` offset per row, and `getTotalSize()` is your spacer height.
+
+```jsx
+const rowVirtualizer = useVirtualizer({
+  count: messages.length,
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 88,
+  overscan: 5,
+});
+
+rowVirtualizer.getVirtualItems().map((row) => (
+  <div key={row.index}
+       ref={rowVirtualizer.measureElement}
+       style={{ transform: `translateY(${row.start}px)` }}>
+    {messages[row.index].text}
+  </div>
+));
+```
+
+The `ref={measureElement}` line is the part worth knowing in 2026. react-window historically needed workarounds for variable heights; TanStack reads each row's real `getBoundingClientRect().height` after render and feeds it back automatically.
+
+This matters more than it used to. TanStack Virtual's May 19, 2026 release made a cold mount of 100k items 5x faster, killed scroll-up jank with dynamic rows by default, and finally made iOS Safari momentum scroll work. A follow-up later that month added end-anchored virtualization, so a streaming chat or log view stays pinned to the bottom as tokens arrive instead of fighting you. That last one is why I now default to TanStack over react-window v2 (which is a genuine rewrite at 2.3.0, not dead) for anything resembling a feed.
+
+## When you should skip JavaScript entirely
+
+The stance that saves you the most work: if the list is a long-but-bounded document, do not virtualize in JS at all. Use CSS.
+
+```css
+.article-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 88px;
+}
+```
+
+`content-visibility: auto` tells the browser to skip layout and paint for anything not near the viewport. It hit Baseline on September 15, 2025 (Chrome/Edge 85+, Firefox 125+, Safari 18+), so it is safe to ship. web.dev's demo dropped initial render from 232ms to 30ms, and Facebook reported up to 250ms faster back-navigation to cached views. The `contain-intrinsic-size` line is not optional: without a reserved size, offscreen elements collapse to zero and your scrollbar jumps. The `auto <size>` keyword tells the browser to remember each element's last rendered height.
+
+Two lines of CSS, no scroll listeners, no ref juggling, find-in-page still works. For a settings page, a docs article, a moderately long report, this wins outright.
+
+## The ceiling, and the rule
+
+Now the failure demo. Style 100k rows with `content-visibility` and open the memory panel. Paint is skipped, but every one of those 100k nodes is still in the DOM. Node count and memory scale linearly with N, because the browser only skipped *rendering* the subtree, it never removed it.
+
+That is the whole decision, so make it a rule you can say in one breath:
+
+- Long, bounded, mostly static, moderate node count? Reach for `content-visibility` first. It is less code and less to break.
+- Effectively unbounded, 10k rows and climbing, or streaming? You need JS windowing, because only removing offscreen nodes from the DOM keeps memory flat.
+
+If you want to prove the win rather than assert it, React 19.2's Performance Tracks in the Chrome DevTools Performance panel expose commit timing directly, so you can show the flat memory curve instead of hand-waving at it.
+
+Reaching for a library on line one was never the mistake. Reaching for it before you could name what it protects you from was. Derive the math once, and both the interview answer and the production call stop being guesses.
