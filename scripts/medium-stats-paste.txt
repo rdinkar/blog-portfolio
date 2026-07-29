@@ -1,6 +1,105 @@
 Story	Presentations
 
 Views	Reads	Earnings
+React List Virtualization from Scratch: Windowing, TanStack Virtual, and CSS content-visibility…
+·
+5 min read
+·
+Jul 27, 2026
+·
+View story
+393
+18
+6
+$0.02
+Machine Coding Round for Senior Engineers: Build a File Explorer (Tree View) in React
+·
+5 min read
+·
+Jul 22, 2026
+·
+View story
+428
+16
+8
+$0.16
+How to Implement a Promise from Scratch in JavaScript (then, catch, finally, all, race)
+·
+5 min read
+·
+Jul 20, 2026
+·
+View story
+411
+17
+5
+$0.23
+CSS Anchor Positioning in 2026: Replace Floating UI and Popper.js with Pure CSS
+·
+5 min read
+·
+Jul 15, 2026
+·
+View story
+434
+35
+13
+$0.07
+React View Transitions: Animating Navigation and Shared Elements with
+·
+5 min read
+·
+Jul 12, 2026
+·
+View story
+400
+16
+4
+$0.03
+Machine Coding Round: Build an Autocomplete / Typeahead (Debounce, Race Conditions, and…
+·
+9 min read
+·
+Jul 8, 2026
+·
+View story
+448
+16
+8
+$0.10
+Debounce and Throttle in JavaScript: How to Implement Them Like Lodash
+·
+12 min read
+·
+Jul 6, 2026
+·
+View story
+483
+38
+10
+$0.06
+React Compiler 1.0: Do You Still Need useMemo and useCallback?
+·
+9 min read
+·
+Jul 1, 2026
+·
+View story
+470
+51
+15
+$0.19
+The AI Coding Interview Is Here: How Senior Engineers Should Actually Prepare
+·
+8 min read
+·
+Jun 29, 2026
+·
+View story
+2.3K
+395
+158
+$1.84
 Your MCP Servers Are Eating the Context Window
 ·
 9 min read
@@ -8,8 +107,8 @@ Your MCP Servers Are Eating the Context Window
 Jun 23, 2026
 ·
 View story
-372
-8
+397
+9
 3
 $0.29
 Stop Running One Agent at a Time
@@ -19,8 +118,8 @@ Stop Running One Agent at a Time
 Jun 22, 2026
 ·
 View story
-381
-8
+403
+12
 5
 $0.15
 You Don't Have a Prompt Problem, You Have a Layering Problem
@@ -30,7 +129,7 @@ You Don't Have a Prompt Problem, You Have a Layering Problem
 Jun 15, 2026
 ·
 View story
-369
+385
 6
 2
 $0.47
@@ -41,7 +140,7 @@ Client-Side Routing Was a Hack. The Navigation API Just Fixed It.
 Jun 11, 2026
 ·
 View story
-379
+408
 19
 7
 $0.05
@@ -52,10 +151,10 @@ This Is What a 10x AI Workflow Actually Looks Like (From a Senior Engineer's Set
 Apr 4, 2026
 ·
 View story
-1.6K
-546
-315
-$0.84
+1.99K
+718
+415
+$1.35
 If Your AI Keeps Repeating Mistakes, Your System Is Broken
 ·
 4 min read
@@ -63,9 +162,9 @@ If Your AI Keeps Repeating Mistakes, Your System Is Broken
 Mar 26, 2026
 ·
 View story
-527
-38
-18
+539
+45
+20
 $0.42
 Your AI Is Bad Because Your Codebase Has No Rules
 ·
@@ -74,9 +173,9 @@ Your AI Is Bad Because Your Codebase Has No Rules
 Mar 19, 2026
 ·
 View story
-751
-236
-152
+840
+323
+201
 $0.15
 Rules AI Must Follow in Your Codebase
 ·
@@ -85,10 +184,10 @@ Rules AI Must Follow in Your Codebase
 Mar 12, 2026
 ·
 View story
-1K
-418
-205
-$0.36
+1.2K
+558
+283
+$0.51
 Designing Frontend Systems with AI in the Loop (What Changes, What Doesn't)
 ·
 6 min read
@@ -96,9 +195,9 @@ Designing Frontend Systems with AI in the Loop (What Changes, What Doesn't)
 Mar 5, 2026
 ·
 View story
-996
-214
-80
+1K
+223
+85
 $0.86
 Using AI for Frontend Performance Debugging: Practical Wins and Hard Limits
 ·
@@ -107,9 +206,9 @@ Using AI for Frontend Performance Debugging: Practical Wins and Hard Limits
 Feb 26, 2026
 ·
 View story
-2.9K
-664
-299
+3K
+676
+302
 $2.06
 AI in Frontend Code Reviews: What to Automate and What Never to Delegate
 ·
@@ -118,10 +217,10 @@ AI in Frontend Code Reviews: What to Automate and What Never to Delegate
 Feb 19, 2026
 ·
 View story
-925
-157
-57
-$0.37
+948
+161
+59
+$0.39
 How Senior Frontend Engineers Actually Use AI at Work
 ·
 4 min read
@@ -129,10 +228,10 @@ How Senior Frontend Engineers Actually Use AI at Work
 Feb 12, 2026
 ·
 View story
-13.9K
+14K
 2.8K
 1.4K
-$10.59
+$10.63
 How Senior Frontend Engineers Approach Code Reviews
 ·
 4 min read
@@ -140,10 +239,10 @@ How Senior Frontend Engineers Approach Code Reviews
 Feb 5, 2026
 ·
 View story
-1.99K
-615
-287
-$1.72
+2K
+661
+289
+$1.73
 Explaining the Browser Rendering Pipeline in Interviews
 ·
 3 min read
@@ -151,10 +250,10 @@ Explaining the Browser Rendering Pipeline in Interviews
 Jan 29, 2026
 ·
 View story
-4.8K
-911
-409
-$2.34
+4.9K
+966
+417
+$2.36
 JavaScript Memory Management for Frontend Engineers
 ·
 5 min read
@@ -163,9 +262,9 @@ Jan 15, 2026
 ·
 View story
 5.6K
-1.3K
-693
-$4.06
+1.4K
+699
+$4.11
 How React Performance Actually Fails at Scale
 ·
 5 min read
@@ -173,18 +272,18 @@ How React Performance Actually Fails at Scale
 Jan 5, 2026
 ·
 View story
-1.3K
-270
-136
-$0.94
+1.4K
+311
+154
+$1.08
 One Year of Writing About Frontend Engineering: What Actually Moved the Needle
 4 min read
 ·
 Jan 2, 2026
 ·
 View story
-601
-119
+608
+122
 55
 $0.07
 How to Build AI-Assisted UIs: Architecture Patterns for Frontend Engineers
@@ -194,9 +293,9 @@ How to Build AI-Assisted UIs: Architecture Patterns for Frontend Engineers
 Dec 15, 2025
 ·
 View story
-1.5K
-601
-321
+1.6K
+614
+323
 $1.55
 The JavaScript Execution Model Explained for Senior Engineers
 ·
@@ -206,8 +305,8 @@ Dec 11, 2025
 ·
 View story
 1.4K
-459
-235
+477
+245
 $1.03
 Machine Coding Round: Build a Real-time Task Board (Like Trello) Step by Step
 ·
@@ -217,9 +316,9 @@ Dec 8, 2025
 ·
 View story
 8.4K
-398
-170
-$0.94
+407
+174
+$0.98
 Why Your React Animations Feel Janky (and How to Fix It Without Rewriting UI)
 ·
 5 min read
@@ -228,8 +327,8 @@ Dec 4, 2025
 ·
 View story
 1K
-401
-137
+406
+139
 $0.51
 Frontend System Design: Build a High-Performance Data Explorer (Like Notion Tables)
 ·
@@ -240,8 +339,8 @@ Dec 1, 2025
 View story
 6.5K
 1.4K
-605
-$2.92
+608
+$2.94
 Patterns for Massive Forms in React: Scalable, Performant and Maintainable
 ·
 5 min read
@@ -251,7 +350,7 @@ Nov 27, 2025
 View story
 9K
 1.8K
-882
+889
 $4.88
 Why Large React Codebases Rot Fast (and How to Stop It)
 ·
@@ -260,7 +359,7 @@ Why Large React Codebases Rot Fast (and How to Stop It)
 Nov 24, 2025
 ·
 View story
-395
+399
 34
 8
 $0.09
@@ -271,9 +370,9 @@ Why Your React App Feels Slow: 7 Hidden Bottlenecks (and How to Fix Them)
 Nov 20, 2025
 ·
 View story
-902
-346
-193
+905
+351
+195
 $0.82
 Patterns for Managing Shared State Across Microfrontends
 ·
@@ -283,9 +382,9 @@ Nov 17, 2025
 ·
 View story
 2.6K
-820
-396
-$2.30
+894
+415
+$2.42
 Your app passes Lighthouse but still feels janky? Here's why.
 ·
 4 min read
@@ -293,10 +392,10 @@ Your app passes Lighthouse but still feels janky? Here's why.
 Nov 13, 2025
 ·
 View story
-779
-50
-16
-$0.08
+785
+51
+17
+$0.10
 Machine Coding Round: Spreadsheet Editor (Formulas, Undo, Copy-Paste)
 ·
 4 min read
@@ -304,9 +403,9 @@ Machine Coding Round: Spreadsheet Editor (Formulas, Undo, Copy-Paste)
 Nov 10, 2025
 ·
 View story
-890
-182
-77
+897
+186
+78
 $0.83
 How React Handles Concurrency in 2025 (and Why It Matters for You)
 ·
@@ -315,9 +414,9 @@ How React Handles Concurrency in 2025 (and Why It Matters for You)
 Nov 6, 2025
 ·
 View story
-628
-263
-115
+631
+267
+116
 $0.43
 Building a Plugin System in React: Design, Isolation, and Communication
 ·
@@ -327,8 +426,8 @@ Nov 3, 2025
 ·
 View story
 1.5K
-761
-336
+808
+353
 $1.29
 The Untold Story of React's Commit Phase (Deep Dive into Fiber Internals)
 ·
@@ -337,9 +436,9 @@ The Untold Story of React's Commit Phase (Deep Dive into Fiber Internals)
 Oct 30, 2025
 ·
 View story
-969
-288
-107
+975
+298
+108
 $0.84
 Machine Coding Round: Build a Realtime Whiteboard (with WebSockets + Canvas)
 ·
@@ -349,9 +448,9 @@ Oct 27, 2025
 ·
 View story
 3.9K
-398
-156
-$1.01
+415
+160
+$1.03
 Frontend Interview Series: How to Explain React Fiber Like a Pro
 ·
 3 min read
@@ -359,10 +458,10 @@ Frontend Interview Series: How to Explain React Fiber Like a Pro
 Oct 23, 2025
 ·
 View story
-13.3K
+13.4K
 2.1K
-968
-$8.23
+972
+$8.28
 Machine Coding Round: Build a Real-time Chat App (Step by Step)
 ·
 3 min read
@@ -370,8 +469,8 @@ Machine Coding Round: Build a Real-time Chat App (Step by Step)
 Oct 20, 2025
 ·
 View story
-622
-136
+629
+138
 60
 $0.58
 Web Workers vs. WASM: When to Use Which for Performance
@@ -383,7 +482,7 @@ Oct 16, 2025
 View story
 7K
 1.3K
-679
+682
 $4.38
 The Future of React State Management: Beyond Redux and Context
 ·
@@ -404,9 +503,9 @@ Oct 9, 2025
 ·
 View story
 2.8K
-574
-288
-$2.39
+577
+290
+$2.41
 System Design for Frontend Engineers: Building a Scalable Dashboard
 ·
 3 min read
@@ -417,7 +516,7 @@ View story
 316K
 6.3K
 2.5K
-$9.48
+$9.55
 React Performance Debugging: Tools and Techniques That Actually Work
 ·
 3 min read
@@ -426,8 +525,8 @@ Oct 2, 2025
 ·
 View story
 3.1K
-792
-407
+805
+414
 $2.55
 Advanced JavaScript Gotchas: What Senior Developers Still Get Wrong
 ·
@@ -437,8 +536,8 @@ Sep 29, 2025
 ·
 View story
 3.1K
-852
-502
+853
+503
 $3.49
 Machine Coding Round: Squid Game (Red Light Green Light)
 ·
@@ -448,8 +547,8 @@ Sep 15, 2025
 ·
 View story
 1K
-128
-58
+129
+59
 $0.53
 Machine Coding Round: Searchable File / Folder Structure
 ·
@@ -458,8 +557,8 @@ Machine Coding Round: Searchable File / Folder Structure
 Sep 6, 2025
 ·
 View story
-855
-158
+862
+159
 67
 $0.68
 Understanding and Implementing Webpack's Module Federation: A Practical Guide
@@ -469,9 +568,9 @@ Understanding and Implementing Webpack's Module Federation: A Practical Guide
 Aug 26, 2025
 ·
 View story
-397
-353
-93
+402
+384
+101
 $0.27
 Why Cold Emailing Beats Job Boards (And How to Do It Right)
 ·
@@ -491,9 +590,9 @@ How to Build a Dynamic Table: A Machine Coding Round Challenge
 Jul 22, 2025
 ·
 View story
-719
-147
-64
+730
+151
+65
 $0.57
 How to Center a Div in 2025
 ·
@@ -502,10 +601,10 @@ How to Center a Div in 2025
 Jul 19, 2025
 ·
 View story
-1K
-613
-212
-$1.83
+1.1K
+619
+214
+$1.85
 SOLID Principles in React: The Frontend Engineer's Secret Weapon
 ·
 5 min read
@@ -516,7 +615,7 @@ View story
 11.4K
 3.5K
 1.2K
-$12.51
+$12.52
 Advanced React Interview Questions: DOM Manipulation and Web APIs
 ·
 3 min read
@@ -524,9 +623,9 @@ Advanced React Interview Questions: DOM Manipulation and Web APIs
 Jul 16, 2025
 ·
 View story
-342
-74
-27
+349
+75
+28
 $0.26
 React Fiber Unveiled: The Secret Sauce Behind Modern React Performance 🚀
 ·
@@ -568,8 +667,8 @@ Frontend Security Best Practices: Protecting Your Users and Your App
 Jun 28, 2025
 ·
 View story
-477
-187
+482
+188
 63
 $0.80
 React Render Props vs. Higher-Order Components: A Deep Dive
@@ -580,8 +679,8 @@ Jun 25, 2025
 ·
 View story
 2.3K
-395
-213
+402
+216
 $1.22
 Modern Frontend Architecture Patterns
 ·
@@ -593,7 +692,7 @@ View story
 9.5K
 2.8K
 1.1K
-$11.57
+$11.60
 The Ultimate Guide to JavaScript Event Loop and Asynchronous Programming: Ace Your Frontend…
 ·
 4 min read
@@ -601,10 +700,10 @@ The Ultimate Guide to JavaScript Event Loop and Asynchronous Programming: Ace Yo
 Jun 18, 2025
 ·
 View story
-369
-97
-40
-$0.24
+374
+98
+41
+$0.26
 Ace Your Next React Interview: Top 10 Common Questions and How to Crush Them 🚀
 ·
 5 min read
@@ -635,7 +734,7 @@ Apr 13, 2025
 ·
 View story
 2K
-815
+816
 317
 $3.94
 Frontend Interview Challenge: Solving the Chess Queen Movement
@@ -646,7 +745,7 @@ Apr 6, 2025
 ·
 View story
 1.5K
-339
+340
 157
 $2.14
 Frontend Coding Interview Questions: 7 JavaScript Challenges Companies Ask
@@ -659,7 +758,7 @@ View story
 10.1K
 2.5K
 1.1K
-$12.85
+$13.16
 Javascript Tricky Interview Questions: The Gotchas That Could Make or Break Your Next Interview
 ·
 4 min read
@@ -667,9 +766,9 @@ Javascript Tricky Interview Questions: The Gotchas That Could Make or Break Your
 Mar 16, 2025
 ·
 View story
-3.4K
+3.5K
 1K
-632
+633
 $10.38
 How I built the viral calendar puzzle game 🎮
 ·
@@ -678,8 +777,8 @@ How I built the viral calendar puzzle game 🎮
 Mar 9, 2025
 ·
 View story
-438
-81
+442
+82
 28
 $0.14
 How to Upgrade Libraries Without Breaking Your Codebase: The Module Aliasing Technique
@@ -691,8 +790,8 @@ Feb 28, 2025
 View story
 5.8K
 1.4K
-778
-$8.87
+782
+$14.31
 The Truth About React Context and Rerenders: It's Not What You Think
 ·
 4 min read
@@ -700,9 +799,9 @@ The Truth About React Context and Rerenders: It's Not What You Think
 Feb 22, 2025
 ·
 View story
-706
-220
-100
+709
+221
+101
 $0.75
 Tired of Double Logins? Build a Real-time Auth Sync Between Your Web App and Chrome Extension 🔄
 ·
@@ -711,8 +810,8 @@ Tired of Double Logins? Build a Real-time Auth Sync Between Your Web App and Chr
 Feb 14, 2025
 ·
 View story
-486
-241
+509
+244
 89
 $0.32
 Web Workers: The Secret to Smooth JavaScript Performance
@@ -734,8 +833,8 @@ Feb 1, 2025
 ·
 View story
 1.5K
-346
-125
+349
+126
 $2.81
 Are You Overusing Effects? Let's Write Better React Together
 ·
@@ -744,7 +843,7 @@ Are You Overusing Effects? Let's Write Better React Together
 Jan 19, 2025
 ·
 View story
-696
+699
 234
 78
 $0.90
@@ -764,7 +863,7 @@ Building Custom React Hooks: A Practical Guide with Real-World Examples
 Jan 7, 2025
 ·
 View story
-452
+455
 62
 31
 -
@@ -775,6 +874,6 @@ Dec 23, 2024
 ·
 View story
 -
-5.5K
-468
+5.6K
+475
 -
