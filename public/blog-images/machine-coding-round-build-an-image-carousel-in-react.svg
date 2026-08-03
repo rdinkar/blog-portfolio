@@ -1,0 +1,49 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#2b2b2b"/>
+      <stop offset="100%" stop-color="#242424"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="active" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5a623"/>
+      <stop offset="100%" stop-color="#e8890c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- carousel stage: off-screen side frames + one active frame -->
+  <g transform="translate(600 245)">
+    <!-- left off-stage frame -->
+    <rect x="-320" y="-95" width="230" height="190" rx="10" fill="#2f2f2f" stroke="#3d3d3d" stroke-width="2" opacity="0.55"/>
+    <!-- right off-stage frame -->
+    <rect x="90" y="-95" width="230" height="190" rx="10" fill="#2f2f2f" stroke="#3d3d3d" stroke-width="2" opacity="0.55"/>
+
+    <!-- active frame (only one in the DOM) -->
+    <rect x="-150" y="-120" width="300" height="240" rx="14" fill="#1d1d1d" stroke="url(#active)" stroke-width="3"/>
+    <!-- stylized image inside active frame -->
+    <path d="M-150 60 L-70 -10 L-10 45 L60 -35 L150 55 L150 106 Q150 120 136 120 L-136 120 Q-150 120 -150 106 Z" fill="#3a3a3a"/>
+    <circle cx="-70" cy="-55" r="26" fill="url(#active)" opacity="0.85"/>
+
+    <!-- arrows -->
+    <g stroke="#e8890c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M-205 0 l-22 -20 M-205 0 l-22 20 M-205 0 h30"/>
+      <path d="M205 0 l22 -20 M205 0 l22 20 M205 0 h-30"/>
+    </g>
+  </g>
+
+  <!-- dot navigation -->
+  <g transform="translate(600 405)">
+    <circle cx="-42" cy="0" r="7" fill="#4a4a4a"/>
+    <rect x="-14" y="-7" width="28" height="14" rx="7" fill="url(#active)"/>
+    <circle cx="42" cy="0" r="7" fill="#4a4a4a"/>
+  </g>
+
+  <!-- title -->
+  <text x="600" y="500" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="58" font-weight="700" fill="#f5f5f5">Build an Image Carousel</text>
+  <text x="600" y="562" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="30" font-weight="400" fill="#9a9a9a">Wrap-around, autoplay, keyboard &amp; a11y in React</text>
+</svg>
