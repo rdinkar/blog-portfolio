@@ -1,0 +1,129 @@
+---
+title: "Machine Coding Round: Build an Image Carousel in React (Autoplay, Swipe, Keyboard, and the CSS-Native Way)"
+description: "CSS scroll-marker carousels vs the React machine-coding build: wrap-around modulo, stale-closure autoplay, and aria-live announcements."
+date: "2026-08-03"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/machine-coding-round-build-an-image-carousel-in-react.svg"
+tags:
+  - react
+  - interview
+  - accessibility
+  - css
+  - frontend
+---
+
+![Machine Coding Round: Build an Image Carousel in React (Autoplay, Swipe, Keyboard, and the CSS-Native Way)](/blog-images/machine-coding-round-build-an-image-carousel-in-react.svg)
+
+"Build an image carousel" sounds like a warm-up. It is one of the most common machine-coding prompts for senior candidates, right next to autocomplete and a data table, and most people who fail it fail on the parts they thought were trivial.
+
+By the end of this you'll know what an interviewer is actually grading, how to ship the React version without the off-by-one and stale-closure bugs that sink juniors, and why in 2026 you should open with a CSS-native carousel and still be ready to defend building it in JS.
+
+## What the interviewer is actually grading
+
+The GreatFrontend spec is deliberately plain: take an array of image URLs, show one at a time capped at 600x400, left and right buttons cycle with wrap-around, dot buttons jump directly, assume fewer than ten images, and "animations and transitions are not necessary." So where does seniority show up?
+
+In the parts the prompt slips in quietly. There is one line most candidates skim: "Only one image element should be in the DOM at any time." That is a real performance constraint, and it changes your render. And nothing in the spec mentions keyboard support, focus management, or screen-reader announcements, which is exactly why those are the differentiators. Component design, edge cases, performance, and accessibility are the axes you're scored on, plus whether you can defend your tradeoffs out loud.
+
+## The wrap-around bug juniors ship
+
+Here is the prev/next logic that looks correct and breaks at the boundary:
+
+```jsx
+// Looks fine. Crashes off the end, renders undefined off the start.
+const next = () => setActiveIndex(activeIndex + 1);
+const prev = () => setActiveIndex(activeIndex - 1);
+```
+
+Click next on the last slide and you index past the array. Click prev on the first and you go to -1. The fix is modulo arithmetic, and the detail that trips people is the wrap-around going backwards: `-1 % n` is `-1` in JavaScript, not `n - 1`, so you add `n` before the modulo.
+
+```jsx
+const count = images.length;
+const next = () => setActiveIndex((i) => (i + 1) % count);
+const prev = () => setActiveIndex((i) => (i - 1 + count) % count);
+```
+
+Now the one-image-in-DOM constraint. Do not render all slides and hide the rest with CSS. Render the active one only, and make the dots real buttons so keyboard and screen-reader users can jump:
+
+```jsx
+<img
+  src={images[activeIndex].src}
+  alt={images[activeIndex].alt}
+  width={600}
+  height={400}
+/>
+{images.map((_, i) => (
+  <button
+    key={i}
+    aria-label={`Go to slide ${i + 1}`}
+    aria-current={i === activeIndex}
+    onClick={() => setActiveIndex(i)}
+  />
+))}
+```
+
+Using `<button>` here is not cosmetic. It gives you focusability, Enter and Space activation, and a role for free. A `<div onClick>` gets you none of that, and an interviewer will notice.
+
+## Autoplay is where the stale closure hides
+
+Autoplay is the second trap. This version passes a quick manual test and then gets stuck:
+
+```jsx
+// Interval closes over activeIndex from first render. It stays 0,
+// so this advances to slide 1 forever.
+useEffect(() => {
+  const id = setInterval(() => setActiveIndex(activeIndex + 1), 4000);
+  return () => clearInterval(id);
+}, []);
+```
+
+The empty dependency array means the interval captures `activeIndex` as `0` and never sees an update. The fix is the functional updater you already used for `next`, which never reads a stale value, and pausing instead of tearing down the whole interval on every index change.
+
+```jsx
+useEffect(() => {
+  if (paused) return;
+  const id = setInterval(next, 4000);
+  return () => clearInterval(id);
+}, [paused, count]);
+```
+
+Then wire `paused` to `onMouseEnter`, `onFocus`, and a visible pause button, and skip autoplay entirely when `matchMedia("(prefers-reduced-motion: reduce)")` matches. Autoplay that you cannot stop is an accessibility failure, and unstoppable motion is one of the most cited carousel defects. One more rule: when a slide advances on its own, do not move focus. Yank focus on every tick and you make the component unusable for keyboard users.
+
+## The accessibility layer nobody writes unprompted
+
+Announcing slide changes is the highest-signal thing you can add, because almost no candidate does it. Wrap the carousel with `aria-roledescription="carousel"` and add a visually hidden live region:
+
+```jsx
+<div aria-live="polite" className="sr-only">
+  Item {activeIndex + 1} of {count}
+</div>
+```
+
+`aria-live="polite"` announces "Item 3 of 6" without interrupting whatever the user is doing. This is the canonical W3C carousel pattern, and saying "polite, not assertive, so it queues behind the user" is the kind of line that ends the round early in your favor.
+
+## The 2026 answer: start from CSS, fall back to JS
+
+Here is the stance. For most product carousels you should now start from CSS and add JavaScript only for what the platform can't do. Chrome and Edge 135 shipped `::scroll-marker`, `scroll-marker-group`, and `::scroll-button()` from CSS Overflow Level 5, which give you an accessible carousel with roughly no JS:
+
+```css
+.carousel {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-marker-group: after;
+}
+.carousel li { scroll-snap-align: center; }
+.carousel li::scroll-marker { content: " "; }
+.carousel::scroll-marker-group { display: flex; gap: 8px; }
+.carousel li::scroll-marker:target-current { background: #111; }
+.carousel::scroll-button(right) { content: "▶" / "Scroll right"; }
+```
+
+What you get for free is the interesting part. The browser generates real `<button>` elements for the scroll buttons, gives them proper roles and tab order, and auto-disables them at the scroll boundaries. The markers get `tablist` and `tab` semantics, arrow keys move between pages, and the active dot is exposed through `:target-current`. The string after the slash, `"Scroll right"`, is the accessible name. That is most of the a11y layer you hand-wrote above, done by the platform.
+
+What still needs JS: timed autoplay with pause, custom announcement text beyond the native semantics, and swipe momentum tuning if the native snap feel isn't enough. Libraries like Embla and Swiper exist because they already solved that surface.
+
+So why not ship native everywhere today? Because `::scroll-marker` is Limited Availability, not Baseline. As of the April 2026 MDN update it works in current Chromium, sits in Safari Technology Preview, and is only partially there in Firefox. In an interview, the senior answer is progressive enhancement: build the scroll-snap carousel so it degrades to a plain horizontal scroller everywhere, then treat the markers and buttons as enhancement for browsers that support them. Lead with the platform, name the support gap yourself, and keep the JS fallback in your pocket.
+
+## The line that lands
+
+Interviewers reach for the carousel because it quietly checks whether you start from the platform, know precisely where it stops, and can build the rest by hand without the wrap-around and stale-closure bugs. Show both layers, say which one you'd ship and why, and you've answered the question they were actually asking.
