@@ -1,0 +1,115 @@
+---
+title: "Feature-Sliced Design in React: How to Structure a Scalable Codebase (and When It's Overkill)"
+description: "Feature-Sliced Design v2.1 in React: the six layers, the import rule that kills circular deps, @x cross-imports, and the Steiger linter"
+date: "2026-08-05"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/feature-sliced-design-in-react-how-to-structure-a-scalable-codebase-and-when-its-overkill.svg"
+tags:
+  - react
+  - architecture
+  - frontend
+  - scaling
+---
+
+![Feature-Sliced Design in React: How to Structure a Scalable Codebase (and When It's Overkill)](/blog-images/feature-sliced-design-in-react-how-to-structure-a-scalable-codebase-and-when-its-overkill.svg)
+
+Open the `utils/` folder in any React app past its second year. You already know what's in there: a date formatter, a retry wrapper, half a state machine, and something called `helpers.ts` that imports from three feature folders and gets imported back by two of them. Nobody can tell you what depends on what anymore.
+
+That's the failure this post is about, and Feature-Sliced Design is the system I'll argue actually fixes it. By the end you'll know the six layers, the one import rule that does most of the work, and the decision that matters more than any of it: when adopting FSD is worth the ceremony and when it just buries a five-page app in folders.
+
+## Why `components/hooks/utils` stops scaling
+
+Type-based folders sort files by what they *are*, not what they're *for*. That works until the app has real domains.
+
+```
+src/
+  components/   # 200 files, no domain grouping
+  hooks/        # useAuth next to useCartTotals
+  utils/        # the grab-bag
+  services/     # api calls that import from utils, which imports back
+```
+
+Two things rot here. First, "where does this file go?" has no answer, so everything lands in `utils/`. Second, nothing constrains the dependency graph, so you get cycles like `services/order.ts → utils/user.ts → services/auth.ts → services/order.ts`. Circular imports don't announce themselves. They surface as an `undefined` at module load six months later, and by then the graph is unreadable.
+
+Feature-Sliced Design (v2.1 is the current spec) answers both by imposing a shape on the whole project instead of leaving it to habit.
+
+## The six layers, top to bottom
+
+FSD splits the app into layers with a fixed order: **App, Pages, Widgets, Features, Entities, Shared** (there's a deprecated `Processes` layer you can ignore). The order is the point.
+
+- **App**: routing, entrypoints, global styles, providers.
+- **Pages**: full pages or large route-level chunks.
+- **Widgets**: large self-contained pieces of UI that deliver a whole use case.
+- **Features**: reused implementations of product features.
+- **Entities**: business entities the project works with, like user or product.
+- **Shared**: reusable code with no business specifics, your design system and helpers.
+
+Inside layers 3 through 6, code is split into **slices** by business domain (`entities/user`, `features/auth`). App and Shared have no slices. Each slice is cut into **segments** by technical purpose: `ui` for components, `api` for backend calls and data types, `model` for schemas and stores, `lib` for slice-local helpers, and `config`.
+
+## The one rule that kills circular imports
+
+Here is the rule that earns FSD its keep: **a module can only import from layers strictly below it.** A Page can import a Feature; a Feature can never import a Page. And slices on the same layer cannot import each other at all.
+
+Run the earlier cycle through that constraint. Re-sliced, `order` lives in `entities/order`, `user` in `entities/user`, and the auth flow in `features/auth`.
+
+```
+features/auth      →  can import entities, shared
+entities/order     →  can import shared only
+entities/user      →  can import shared only
+```
+
+`entities/order` importing `features/auth` is now a structural violation, not a style nit. The cycle can't form because the graph only points one direction. You stop reasoning about dependencies file by file and start reasoning by layer, which is something a human can actually hold in their head.
+
+## Public API: the contract that makes refactors safe
+
+Each slice exposes a Public API, usually an `index.ts` of re-exports. The rule from the docs is blunt: only expose the necessary parts, and don't leak internals.
+
+Here's the version I keep seeing, and why it hurts:
+
+```ts
+// features/auth/index.ts  (the anti-pattern)
+export * from "./ui";
+export * from "./model";
+```
+
+That wildcard re-exports everything, including `model/tokenStore.ts`, which was meant to be private. Now some page reaches straight into your token store, and you can't refactor it without breaking a caller you didn't know existed. Wildcard barrels also confuse tree-shaking, so dead code ships to users.
+
+The contract version:
+
+```ts
+// features/auth/index.ts  (the boundary)
+export { LoginForm } from "./ui/LoginForm";
+export { useSession } from "./model/useSession";
+// tokenStore stays internal. Nobody outside auth can touch it.
+```
+
+Now the slice's surface is two names. Everything else is free to move. That's the whole promise: legible dependencies plus safe internal churn.
+
+One honest caveat the FSD docs themselves flag: barrel `index` files can cause circular imports, tree-shaking problems in `shared/ui` and `shared/lib`, and bundler slowdowns on large projects. So keep Public APIs explicit and thin, especially in Shared.
+
+## Cross-imports and the over-slicing trap
+
+Entities sometimes genuinely need each other. An `order` needs the `User` type. Since same-layer imports are banned, v2.1 standardized the `@x` notation for this narrow case:
+
+```ts
+// entities/user/@x/order.ts
+export type { User } from "../model/types";
+
+// in entities/order/model/types.ts
+import type { User } from "entities/user/@x/order";
+```
+
+The docs are strict here: keep cross-imports minimal and only use `@x` on the Entities layer. If you're reaching for it everywhere, your slice boundaries are wrong.
+
+This is where tooling matters. **Steiger**, the FSD architecture linter (`@feature-sliced/steiger-plugin`, zero-config, currently beta), enforces the rules and, just as usefully, flags over-engineering. Its `insignificant-slice` rule warns when an entity or feature is used by only one page, and `excessive-slicing` catches decomposition that's too fine-grained. When Steiger tells you a slice is insignificant, believe it. You made a folder where an inline function would do.
+
+## When FSD is overkill
+
+Here's the stance I'll defend: the folder names are the least valuable part of FSD, and copying all six layers into a small app is its own kind of rot. You end up with more files than logic, and every feature is a scavenger hunt across four directories.
+
+The spec agrees, which is why v2.1 reframed adoption as "pages first." Start with **App, Pages, Widgets, and Shared**. Possibly stop there. That's a complete, legible structure for most apps.
+
+Promote code into **Features** and **Entities** only when a concrete trigger appears. My rule: the moment the same logic gets used by three or more pages or widgets, it earns a slice. Before that, a checkout flow living inside `pages/checkout` is correct, not lazy. One reuse is a coincidence. Three is a pattern, and a pattern is what a Feature is for.
+
+So the decision rule is short. If your team is above a handful of engineers, the domain count is growing, and `utils/` has already become a landfill, adopt FSD and let the import direction do the work. If you're shipping a five-page product with one clear owner, take the layering discipline and skip the ceremony. The goal was never six folders. It was a dependency graph you can still read next year.
