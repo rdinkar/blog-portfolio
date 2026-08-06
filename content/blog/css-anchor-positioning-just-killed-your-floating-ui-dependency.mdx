@@ -1,0 +1,272 @@
+---
+title: "CSS Anchor Positioning Just Killed Your Floating UI Dependency"
+description: "CSS anchor positioning now ships in all four engines. Replace Floating UI for tooltips, dropdowns, and popovers with zero JS"
+date: "2026-06-24"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/css-anchor-positioning-just-killed-your-floating-ui-dependency.svg"
+tags:
+  - css
+  - browser
+  - frontend
+  - web-platform
+  - ui
+---
+
+![CSS Anchor Positioning Just Killed Your Floating UI Dependency](/blog-images/css-anchor-positioning-just-killed-your-floating-ui-dependency.svg)
+
+Open your `package.json`. There's a decent chance `@floating-ui/dom` is in there, and a better chance nobody on the team remembers installing it directly. It rode in on a tooltip component, or a dropdown, or a popover in your design system, and it has been quietly running `getBoundingClientRect` on every scroll and resize event ever since.
+
+That dependency was load-bearing for a real browser gap. For most of the last decade, the platform gave you no way to say "put this element below that button, and flip it above if there isn't room." So we measured rectangles in JavaScript, ran flip-and-shift math in middleware, and re-ran the whole thing on a `requestAnimationFrame` loop to keep up with scrolling.
+
+That gap is closed. As of Firefox 147, stable on January 13, 2026, CSS Anchor Positioning works by default in every major engine. Chrome and Edge had it since 125, Safari since 26, and Firefox was the last holdout. Cross-browser anchor positioning is only a few months old, which is exactly why most senior frontend engineers still reach for a JS library by reflex.
+
+Here's the stance I'll defend: if you `npm install @floating-ui/dom` for a tooltip in 2026, you are shipping a workaround for a browser limitation that no longer exists. Not for every case, and I'll name the exceptions honestly. But for the tooltips, dropdowns, and popovers that make up the overwhelming majority of positioned UI, the right number of positioning dependencies is now zero.
+
+## What Floating UI actually does, so we can replace it piece by piece
+
+Strip away the API and Floating UI does four mechanical things.
+
+It measures. `computePosition` reads the trigger's rectangle and the floating element's rectangle with `getBoundingClientRect`.
+
+It places. Given a `placement` like `'bottom'`, it computes coordinates to sit the element there.
+
+It corrects. The `flip` middleware moves the element to the opposite side when it would overflow the viewport; `shift` slides it along the axis to stay visible; `offset` adds a gap.
+
+It keeps up. `autoUpdate` wires listeners to scroll, resize, and layout changes so the position recomputes whenever anything moves.
+
+Every one of those four jobs now has a native, declarative CSS equivalent that the layout engine runs for free. No bytes shipped, no `getBoundingClientRect`, no `requestAnimationFrame` loop. The mapping is almost suspiciously direct:
+
+- `placement: 'bottom'` becomes `position-area: bottom center`
+- `offset(8)` becomes `margin-top: 8px`
+- `flip()` becomes `position-try-fallbacks: flip-block`
+- `autoUpdate()` becomes nothing, because the browser does it automatically
+
+Three properties, `anchor-name`, `position-anchor`, and `position-area`, cover roughly 80% of real use cases. Let me show the migration on the thing you've shipped a hundred times.
+
+## A tooltip, before and after
+
+Here is a Floating UI tooltip inside a React component. This is good, idiomatic code. It is also the problem.
+
+```tsx
+import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
+import { useEffect, useRef, useState } from 'react';
+
+function PriceTooltip({ label }: { label: string }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || !triggerRef.current || !tooltipRef.current) return;
+    const trigger = triggerRef.current;
+    const tooltip = tooltipRef.current;
+
+    // autoUpdate re-runs computePosition on every scroll and resize.
+    const cleanup = autoUpdate(trigger, tooltip, () => {
+      computePosition(trigger, tooltip, {
+        placement: 'bottom',
+        middleware: [offset(8), flip(), shift({ padding: 8 })],
+      }).then(({ x, y }) => {
+        Object.assign(tooltip.style, { left: `${x}px`, top: `${y}px` });
+      });
+    });
+
+    return cleanup; // tear down the listeners on unmount/close
+  }, [open]);
+
+  return (
+    <>
+      <button ref={triggerRef} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+        {label}
+      </button>
+      {open && <div ref={tooltipRef} role="tooltip" className="tooltip">Includes tax</div>}
+    </>
+  );
+}
+```
+
+Count what's here. A library import. Two refs. An effect that has to re-run on open. A promise resolving into imperative style mutations. A cleanup function tearing down scroll and resize listeners, which you'd better not forget, because that's a memory leak that ships clean and rots slowly.
+
+Now the same tooltip, with the positioning moved entirely into CSS. The React shrinks to markup:
+
+```tsx
+function PriceTooltip({ label }: { label: string }) {
+  return (
+    <span className="price-trigger" tabIndex={0}>
+      {label}
+      <span role="tooltip" className="price-tooltip">Includes tax</span>
+    </span>
+  );
+}
+```
+
+```css
+.price-trigger {
+  anchor-name: --price-trigger;   /* must be a dashed-ident, not "price-trigger" */
+}
+
+.price-tooltip {
+  position: absolute;
+  position-anchor: --price-trigger;
+  position-area: bottom center;   /* placement: 'bottom' */
+  margin-top: 8px;                /* offset(8) */
+  position-try-fallbacks: flip-block, flip-inline; /* flip() on both axes */
+}
+```
+
+The library is gone. The effect is gone. The cleanup is gone. The scroll and resize listeners are gone, replaced by a layout engine that already knows when things move because it's the thing moving them. `position-area: bottom center` places the tooltip on an implicit 3x3 grid where the anchor sits in the center cell. `position-try-fallbacks: flip-block` swaps top and bottom when the bottom edge would clip; `flip-inline` does the same for left and right. The browser evaluates them in order and keeps the first that fits.
+
+This is the whole pitch. Six lines of CSS doing the work of a dependency, an effect, and a listener teardown you had to get exactly right.
+
+## A dropdown menu with zero JavaScript
+
+Pair anchor positioning with the Popover API and you can delete more than the positioning logic. You can delete the open/close state, the z-index war, and the focus-trap library too.
+
+```html
+<button popovertarget="account-menu" style="anchor-name: --account-btn">
+  Account
+</button>
+
+<div id="account-menu" popover>
+  <a href="/profile">Profile</a>
+  <a href="/billing">Billing</a>
+  <a href="/logout">Sign out</a>
+</div>
+```
+
+```css
+#account-menu {
+  position-anchor: --account-btn;
+  position-area: bottom span-left;     /* hang below, aligned to the left edge */
+  position-try-fallbacks: flip-block;  /* flip above near the bottom of the viewport */
+  margin: 0;
+}
+
+[popover] {
+  /* The UA stylesheet sets margin: auto, which fights position-area. Kill it. */
+  margin: unset;
+}
+```
+
+The `popovertarget` attribute wires the button to the popover with no event handlers. The Popover API renders the menu in the top layer, so it sits above everything regardless of stacking context, and you never touch `z-index`. It gives you light dismiss for free: click outside or press Escape and it closes. Keyboard and focus handling come built in. For tooltips that should not steal focus, use `popover="hint"` instead of the default `popover="auto"`.
+
+One gotcha that will cost you twenty minutes if you skip it. The user-agent stylesheet sets `margin: auto` on `[popover]`, which centers it in the viewport and fights `position-area`. Reset it with `[popover] { margin: unset }`. The CSS Working Group has since made `margin: auto` back off automatically when `position-area` is set, but the explicit reset is still the safe move across the versions your users actually run.
+
+You'll also trip over the two anchor syntaxes if you're not watching. The HTML `anchor` attribute takes a plain element id, `anchor="account-btn"`. The CSS `anchor-name` property takes a dashed-ident, `--account-btn`. They look like the same idea and they are not interchangeable.
+
+## Animating it in, and a real arrow
+
+The Popover API toggles `display` between `none` and the top layer, and you can't transition `display`. The platform's answer is `@starting-style`, which defines the values an element animates *from* on its first render.
+
+```css
+#account-menu {
+  opacity: 1;
+  transition: opacity 0.15s, overlay 0.15s allow-discrete;
+}
+
+/* Where the popover starts before it's shown. */
+@starting-style {
+  #account-menu {
+    opacity: 0;
+  }
+}
+```
+
+The arrow is where people assume they'll need JavaScript, and they don't. The `anchor()` function pins an inset edge of the positioned element to an edge, center, or percentage of the anchor. So a tooltip arrow centered under the trigger is one pseudo-element:
+
+```css
+.price-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: anchor(--price-trigger center); /* center the arrow on the trigger */
+  translate: -50% 0;
+  border: 6px solid transparent;
+  border-bottom-color: var(--tooltip-bg);
+}
+```
+
+`left: anchor(--price-trigger center)` reads the anchor's horizontal center and the `translate` recenters the arrow on it. No measuring, no resize listener keeping the arrow glued to a moving target.
+
+## Custom fallback chains beat hand-rolled collision detection
+
+`flip-block` and `flip-inline` handle the common cases, but a context menu near a viewport corner often needs a real preference order: try above, then the left side, then the right side, take whichever fits first. Floating UI expresses this with middleware and ordering logic. CSS expresses it with named `@position-try` rules.
+
+```css
+.context-menu {
+  position: fixed;
+  position-anchor: --menu-origin;
+  position-area: bottom span-right;
+  position-try-fallbacks: --above, --left-side, --right-side;
+}
+
+@position-try --above {
+  position-area: top span-right;
+}
+
+@position-try --left-side {
+  position-area: left span-bottom;
+}
+
+@position-try --right-side {
+  position-area: right span-bottom;
+}
+```
+
+The browser tries the default placement, then walks the fallback list in order and applies the first one where the element fully fits. That is the entire collision-detection algorithm you used to hand-roll with rectangle math and viewport queries, expressed as a declarative preference list. The engine has more information than your JavaScript ever did, since it knows the post-layout geometry without a single forced reflow.
+
+## The three cases where you still reach for JavaScript
+
+I told you I'd be honest about the limits, because a hype take helps nobody. There are three situations where anchor positioning alone isn't enough in 2026.
+
+Virtual lists. When rows mount and unmount as the user scrolls, the anchor a popover points at may not exist in the DOM at the moment you need it. You're managing element lifecycle by hand, and that coordination still wants JavaScript.
+
+Cross-shadow-DOM anchors. `anchor-name` follows containing-block and scope rules, so anchoring across shadow boundaries is constrained. The official polyfill at v0.7.0 added support for elements within the *same* shadow DOM, with broader cases still on the roadmap, which tells you the native story isn't fully settled here either.
+
+Deeply nested dynamic menus. Multi-level menus where each submenu anchors to a item that itself was just positioned can outrun what the declarative model handles cleanly, especially when positions depend on each other in sequence.
+
+Outside those, the gotchas are about scope, not capability. The big one: a `position: relative` ancestor with `overflow: hidden` can hide your popover entirely, because the anchor has to be reachable from the positioned element's containing block. If your tooltip vanishes, check the ancestor chain for clipping before you blame the API. There were also cross-engine differences during the rollout, where Chrome originally only shifted along the block axis into the containing block while Safari shifted correctly; Safari aligned to the stable fallback behavior before shipping, so this is mostly a footnote now, but worth knowing if you read older bug threads.
+
+## The migration recipe, gated behind @supports
+
+You do not rip the dependency out and pray. You feature-detect, layer the native version on top, and let old browsers keep the fallback. Anchor positioning sits around 80% global coverage by caniuse's count, with some 2026 write-ups citing roughly 91% of traffic once you weight by usage, so a feature gate is mandatory, not optional.
+
+```css
+/* Fallback for browsers without anchor positioning. */
+.price-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* The enhanced path, only where the engine supports it. */
+@supports (anchor-name: --a) {
+  .price-trigger {
+    anchor-name: --price-trigger;
+  }
+  .price-tooltip {
+    position-anchor: --price-trigger;
+    position-area: bottom center;
+    margin-top: 8px;
+    position-try-fallbacks: flip-block, flip-inline;
+    /* reset the fallback's manual centering */
+    top: auto;
+    left: auto;
+    transform: none;
+  }
+}
+```
+
+For a design system, this is the cleanest part of the whole story. A `Tooltip` or `Popover` component can drop its JS positioning dependency entirely behind this feature check. Modern browsers get native placement; older ones get a plain absolutely-positioned fallback that may not flip but will not break. If you want flipping on legacy browsers too, the Floating UI polyfill route loads roughly the same 8 kB you were already shipping, except now only the stragglers pay for it instead of everyone.
+
+That asymmetry is the point. The old model taxed 100% of your users with 8 kB of positioning JavaScript so that the few percent on old browsers would get correct flipping. The new model gives the modern majority native, zero-byte positioning and bills the cost only to the browsers that genuinely need help.
+
+## What's still landing
+
+The API is not frozen. The OddBird team, who built the polyfill and much of the implementation work, has flagged several things in progress: `self` prefix position changes in `position-area`, transform support, and an `anchored` container query that matches the currently active fallback position. That last one is the feature I'm most impatient for, because it would let you restyle the arrow or shadow based on which way the popover actually flipped, the one thing that still nudges you back toward JavaScript today.
+
+So here's the challenge. On your next ticket that touches a tooltip or a dropdown, don't open the Floating UI docs. Open your stylesheet. Write `anchor-name`, `position-anchor`, `position-area`, and one `position-try-fallbacks` line, wrap it in `@supports`, and watch the effect, the refs, and the listener teardown disappear from the component.
+
+The browser has been able to do this for a few months now. The only thing still installing the dependency is muscle memory.
