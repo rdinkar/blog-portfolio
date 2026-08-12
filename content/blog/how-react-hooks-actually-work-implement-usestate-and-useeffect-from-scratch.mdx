@@ -1,0 +1,150 @@
+---
+title: "How React Hooks Actually Work: Implement useState and useEffect from Scratch (2026)"
+description: "Implement useState and useEffect from scratch to see how React's cursor and fiber memoizedState store hook state by call order"
+date: "2026-08-12"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/how-react-hooks-actually-work-implement-usestate-and-useeffect-from-scratch.svg"
+tags:
+  - react
+  - hooks
+  - internals
+  - interview
+  - javascript
+---
+
+![How React Hooks Actually Work: Implement useState and useEffect from Scratch (2026)](/blog-images/how-react-hooks-actually-work-implement-usestate-and-useeffect-from-scratch.svg)
+
+You use `useState` every day. Now an interviewer asks how it remembers state between renders, given the component function is just a plain function that runs top to bottom every time. If your answer is "React tracks it somehow," you failed the question they were actually asking.
+
+By the end you'll have implemented `useState` and `useEffect` in about forty lines, broken them by calling a hook conditionally, and mapped it onto React's real fiber internals. This is the exact gap senior loops still probe in 2026.
+
+## How does a plain function remember state?
+
+It doesn't. React does, on the side.
+
+The whole trick: hooks are stored in an ordered array, and a cursor walks that array in the same order on every render. React does not identify a hook by name, by variable, or by a key you pass. It identifies it by the order it was called in.
+
+Let me build the smallest thing that proves this.
+
+```javascript
+let hooks = [];
+let cursor = 0;
+
+function useState(initialValue) {
+  const i = cursor;
+  hooks[i] = hooks[i] ?? initialValue; // first render seeds the slot
+  const setState = (next) => {
+    hooks[i] = typeof next === "function" ? next(hooks[i]) : next;
+    render();
+  };
+  cursor++;
+  return [hooks[i], setState];
+}
+```
+
+Each call grabs the current slot, advances the cursor, and closes over its own index `i`. The setter writes back to that fixed slot and re-renders. The only rule keeping this coherent is that `cursor` must reset before every render.
+
+```javascript
+function render() {
+  cursor = 0; // this line is the entire Rules of Hooks
+  Profile();
+}
+
+function Profile() {
+  const [name, setName] = useState("Rahul");
+  const [role, setRole] = useState("Engineer");
+  console.log(name, role);
+  window.__setRole = setRole;
+}
+
+render();               // Rahul Engineer
+window.__setRole("Staff");
+                        // Rahul Staff
+```
+
+`name` lives in slot 0, `role` in slot 1, on every render, forever. The values survive because they never lived in the function. They live in `hooks`, and call order is the only thing mapping a variable to its slot.
+
+## Why breaking call order corrupts state
+
+Watch what happens when the order stops being stable. Wrap the second hook in a condition, the way a well-meaning early return or guard clause does.
+
+```javascript
+function Profile(showRole) {
+  const [name, setName] = useState("Rahul");
+  if (showRole) {
+    const [role, setRole] = useState("Engineer");
+  }
+  const [theme] = useState("dark");
+  console.log(name, theme);
+}
+```
+
+On the first render with `showRole` true, `name` takes slot 0, `role` takes slot 1, `theme` takes slot 2. Re-render with `showRole` false and the cursor skips a beat: `name` still reads slot 0, but `theme` now reads slot 1, which holds `"Engineer"`. Your theme is suddenly a job title.
+
+The slot didn't move. The hook that owned it vanished, and every hook after it shifted up by one. That is precisely what React reports as `Rendered fewer hooks than expected`: a cell went missing and everything downstream mapped to the wrong slot. Call a hook inside a branch that sometimes runs and you get the opposite: `Rendered more hooks than expected`.
+
+There's no fix inside the mechanism. Positional storage cannot tolerate a variable number of positions. That's why the official rule (react.dev) reads: don't call Hooks inside loops, conditions, nested functions, or try/catch/finally blocks; use them at the top level before any early returns. The try/catch clause is recent, added because a throw could skip the hooks after it.
+
+## Implementing useEffect and why your deps always change
+
+Effects need a second store plus a comparison:
+
+```javascript
+let effects = [];
+
+function areHookInputsEqual(next, prev) {
+  if (prev === null) return false; // first run
+  for (let i = 0; i < next.length; i++) {
+    if (!Object.is(next[i], prev[i])) return false;
+  }
+  return true;
+}
+
+function useEffect(create, deps) {
+  const i = cursor;
+  const prev = effects[i];
+  const changed = prev ? !areHookInputsEqual(deps, prev.deps) : true;
+  if (changed) {
+    if (prev?.cleanup) prev.cleanup();
+    effects[i] = { deps, cleanup: create() };
+  }
+  cursor++;
+}
+```
+
+The dependency array is compared element by element with `Object.is`. Nothing deeper. This is the whole reason a fresh object, array, or inline function in your deps re-runs the effect every single render:
+
+```javascript
+// Wrong: a new object reference every render, Object.is always false
+const filters = { status: "active" };
+useEffect(() => {
+  track(filters);
+}, [filters]);
+
+// Right: a stable primitive, or a value memoized upstream
+const status = "active";
+useEffect(() => {
+  track(status);
+}, [status]);
+```
+
+`{ status: "active" }` is a brand new reference each render, so `Object.is(next, prev)` is false, so the effect fires again. React's `areHookInputsEqual` does exactly this loop. The dependency array is nothing more than a shallow reference check, and you can out-think it.
+
+## Mapping the toy onto React's real internals
+
+Swap the toy's pieces for React's and nothing conceptually changes.
+
+Our `hooks` array becomes a singly linked list hanging off `fiber.memoizedState`, where each cell has `memoizedState`, `baseState`, `baseQueue`, `queue`, and a `next` pointer. On mount, `mountWorkInProgressHook()` appends a fresh cell; on update, `updateWorkInProgressHook()` walks the existing chain in order. That walk is our cursor.
+
+Our `cursor = 0` reset becomes a dispatcher swap. React points a global dispatcher at `HooksDispatcherOnMount` for the first render and `HooksDispatcherOnUpdate` for re-renders. Outside render it points at `ContextOnlyDispatcher`, whose hooks throw "Invalid hook call." That guard, not a lint rule, is what enforces "only call hooks inside a component or hook."
+
+`useState` itself is `useReducer` with a `basicStateReducer`. The value sits in `memoizedState`; the setter lives on the hook's `UpdateQueue.dispatch`. Calling it enqueues an update onto a circular `queue.pending` list, and on the next render React drains that queue in order, which is why several `setState` calls in one handler batch and apply sequentially. Effects live on a separate circular list in `fiber.updateQueue.lastEffect` as `{ tag, create, inst, deps, next }` objects, where `tag` is a bitmask marking Passive, Layout, or Insertion timing.
+
+This machinery is unchanged in React 19.x (current stable 19.2.8, July 2026). React 19 adds one deliberate exception: the `use` hook can be called inside conditions and loops, because it doesn't own an ordered slot. It resolves a promise or context on the spot. Everything else is positional, and `use` is not.
+
+## What the linter is actually telling you
+
+This is why `eslint-plugin-react-hooks` exists, and its errors aren't nagging. v6 (Oct 2025) ships flat config by default; its React Compiler-powered rules are opt-in through the `recommended-latest` preset, not folded into the default `recommended` yet. But the core rule is the old rules-of-hooks: it statically proves your hooks run unconditionally at the top level, because the runtime cannot recover if they don't.
+
+So the next time you reach for an early return above a hook, picture the cursor sliding one slot out of alignment and every value after it reading the wrong cell. The Rules of Hooks are just what it costs to remember state in an array indexed by call order. Say that in the interview and you're no longer the candidate who answers "React tracks it somehow."
