@@ -56,8 +56,12 @@ function run(name, body, expectPass, mustContain) {
   return ok;
 }
 
-const short = "This is a real sentence about React components and state. ".repeat(100); // ~1000 words -> 5 min
-const long = "This is a real sentence about React components and state. ".repeat(240); // ~2400 words -> ~12 min
+// ~1000 words -> 5 min (well inside the band)
+const short = "This is a real sentence about React components and state. ".repeat(100);
+// ~1700 words -> ~8.5 min (inside the new 9-min ceiling)
+const eightMin = "This is a real sentence about React components and state. ".repeat(170);
+// ~2200 words -> ~11 min (over the 9-min ceiling)
+const long = "This is a real sentence about React components and state. ".repeat(220);
 
 // A Markdown table in the body must be rejected (the site does not render tables).
 const withTable = short + "\n\n| Case | Why |\n| --- | --- |\n| A | B |\n| C | D |\n";
@@ -67,8 +71,9 @@ const tableInCodeFence =
   short + "\n\n```md\n| Case | Why |\n| --- | --- |\n| A | B |\n```\n";
 
 let allOk = true;
-allOk &= run("in-band", short, true);
-allOk &= run("too-long", long, false);
+allOk &= run("in-band-short", short, true);
+allOk &= run("in-band-eight-min", eightMin, true);
+allOk &= run("too-long", long, false, "ceiling");
 allOk &= run("table-in-body", withTable, false, "table");
 allOk &= run("table-in-code-fence", tableInCodeFence, true);
 fs.rmSync(tmp, { recursive: true, force: true });
