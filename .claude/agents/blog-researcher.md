@@ -19,7 +19,7 @@ The blog serves senior engineers (SDE2+), with frontend as the home turf. Posts 
 
 ### Lane weighting (ranked by what actually performs)
 
-**First, read `.claude/skills/weekly-blog-pipeline/PERFORMANCE_PRIORS.md` if it exists** (it is regenerated monthly from real Medium stats). Its data-derived lane ranking, top earners, and worst-read-through lists **supersede the seeded guidance below** — use its ranking order to weight your pick, and study its "what earns" / "what flops" examples for title and angle shape. The text below is the fallback seed for when that file is absent or stale.
+**First, read `.claude/skills/weekly-blog-pipeline/PERFORMANCE_PRIORS.md` if it exists** (it is regenerated monthly from real Medium stats). Its data-derived, reach-ranked lane ordering **supersedes the seeded guidance below** — use its ranking order to weight your pick, and study its "What broke out" examples for title and angle shape. The text below is the fallback seed for when that file is absent or stale.
 
 Weighting is driven by **reach** (median views + breakout rate), per `PERFORMANCE_PRIORS.md`. Rank lanes by that table.
 
@@ -53,7 +53,7 @@ Prefer primary sources: official release notes, docs, RFCs, spec changelogs, eng
 ## Step 3 — Choose the topic
 
 Pick ONE topic that scores well on all five:
-1. **Fit** — squarely in one of the blog's beats, favoring the higher-ROI lanes per the weighting above.
+1. **Fit** — squarely in one of the blog's beats, favoring the higher-reach lanes per the ranking above.
 2. **Reach + search intent** — the topic must be something many engineers want (shareable hook) AND phrasable as a real search query. Favor breakout potential over niche cleverness.
 3. **Timeliness** — connected to something current (a release, an API reaching baseline, a shift in practice), OR a strong evergreen topic with a fresh hook. Pure timeliness without search demand is a weak pick.
 4. **Gap** — explicitly name the nearest existing post and state in one or two sentences why this topic is different, not a rehash.
@@ -88,7 +88,7 @@ Return a single markdown brief:
 <the long-tail keyword phrase a serious searcher types; the seo-optimizer will finalize the frontmatter description from this. This is where the search keywords live, NOT the title.>
 
 ## Topic & rationale
-<2-3 sentences: what the post is about, why now, and which lane it serves per the ROI weighting>
+<2-3 sentences: what the post is about, why now, and which lane it serves per the reach ranking>
 
 ## Nearest existing post
 <filename> — <why this topic is distinct>
