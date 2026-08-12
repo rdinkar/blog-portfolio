@@ -1,0 +1,48 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#2f2f2f"/>
+      <stop offset="100%" stop-color="#242424"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- ordered array of hook slots -->
+  <g transform="translate(80,300)">
+    <!-- slot 0 -->
+    <rect x="0" y="0" width="150" height="150" rx="14" fill="none" stroke="#3d3d3d" stroke-width="2"/>
+    <text x="16" y="34" font-family="Inter, -apple-system, sans-serif" font-size="20" fill="#61dafb" font-weight="700">0</text>
+    <text x="75" y="88" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="22" fill="#e8e8e8" font-weight="600">useState</text>
+
+    <!-- slot 1 -->
+    <rect x="170" y="0" width="150" height="150" rx="14" fill="none" stroke="#3d3d3d" stroke-width="2"/>
+    <text x="186" y="34" font-family="Inter, -apple-system, sans-serif" font-size="20" fill="#61dafb" font-weight="700">1</text>
+    <text x="245" y="88" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="22" fill="#e8e8e8" font-weight="600">useState</text>
+
+    <!-- slot 2 highlighted (cursor) -->
+    <rect x="340" y="0" width="150" height="150" rx="14" fill="#61dafb" fill-opacity="0.10" stroke="#61dafb" stroke-width="2.5"/>
+    <text x="356" y="34" font-family="Inter, -apple-system, sans-serif" font-size="20" fill="#61dafb" font-weight="700">2</text>
+    <text x="415" y="88" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="22" fill="#ffffff" font-weight="600">useEffect</text>
+
+    <!-- slot 3 empty -->
+    <rect x="510" y="0" width="150" height="150" rx="14" fill="none" stroke="#333" stroke-width="2" stroke-dasharray="6 8"/>
+    <text x="526" y="34" font-family="Inter, -apple-system, sans-serif" font-size="20" fill="#555" font-weight="700">3</text>
+
+    <!-- cursor pointer above slot 2 -->
+    <g transform="translate(415,-42)">
+      <path d="M0 26 L-14 0 L14 0 Z" fill="#61dafb"/>
+      <text x="0" y="-14" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="16" fill="#61dafb" font-weight="600" letter-spacing="2">cursor</text>
+    </g>
+  </g>
+
+  <!-- title -->
+  <text x="80" y="140" font-family="Inter, -apple-system, sans-serif" font-size="58" fill="#ffffff" font-weight="800">How React Hooks</text>
+  <text x="80" y="206" font-family="Inter, -apple-system, sans-serif" font-size="58" fill="#ffffff" font-weight="800">Actually Work</text>
+
+  <text x="80" y="258" font-family="Inter, -apple-system, sans-serif" font-size="24" fill="#9a9a9a" font-weight="500">An ordered array + a cursor. Nothing more.</text>
+</svg>
