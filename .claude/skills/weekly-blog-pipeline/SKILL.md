@@ -2,6 +2,7 @@
 name: weekly-blog-pipeline
 description: Orchestrates the blog-writing pipeline - researcher, writer, SEO, featured image, and reviewer agents - producing a draft post PR each run. Use when running the weekly blog routine or when asked to generate a blog post.
 ---
+<!-- pipeline-objective: reach -->
 
 # Weekly Blog Pipeline
 
@@ -11,7 +12,7 @@ Repo root: `/Users/rahul.dinkar/Documents/projects/blogs-portfolio`. All steps b
 
 ## Cadence (quality over volume)
 
-The default is **one strong post per week.** Multiple posts per ISO week are *allowed* but are a ceiling, not a target — take a second same-week run only when the topic sits in a proven lane (interview / architecture / React internals, per the researcher's ROI weighting) and clears the full quality gate. Performance data shows that flooding the channel with thin posts (recent ones converted at ~2% read-through versus ~23% typical) hurts the channel; a missed week beats a weak post. If a run's topic is weak or only marginally distinct, abort the run rather than shipping to hit a quota.
+The default is **one strong post per week.** Multiple posts per ISO week are *allowed* but are a ceiling, not a target — take a second same-week run only when the topic sits in a proven lane (interview / architecture / React internals, per the researcher's reach ranking) and clears the full quality gate. A missed week beats a weak post: a thin, generic post that no one clicks or shares does not build reach and clutters the channel. Ship only posts that clear the reviewer's reach gate. If a run's topic is weak or only marginally distinct, abort the run rather than shipping to hit a quota.
 
 ## Step 0 — Preflight
 
@@ -78,7 +79,7 @@ node scripts/validate-post.mjs content/blog/<slug>.mdx
 
 Fix any reported errors (dispatch blog-writer for content issues; fix mechanical frontmatter issues directly) and re-run until it passes. Do not ship a post that fails validation.
 
-The validator enforces a **hard 5–6 minute read ceiling**, computed exactly the way the live site computes it (`reading-time` over the full body, code blocks included). If it fails with a read-length error, that is a content fix: dispatch **blog-writer** in revision mode telling it exactly how far over 6 minutes the post reads and to cut prose and/or trim code blocks (fewer scenarios, one strong example, shorter snippets) to land at 5–6 minutes, then re-validate. Do not "fix" a read-time failure by loosening the validator. This gate is the deterministic backstop for the length limit; the writer and reviewer word-budgets are guidance, but this check is what actually holds the line.
+The validator enforces a **hard 9-minute read ceiling** within the 3–9 minute band, computed exactly the way the live site computes it (`reading-time` over the full body, code blocks included). If it fails with a read-length error, that is a content fix: dispatch **blog-writer** in revision mode telling it exactly how far over 9 minutes the post reads and to cut prose and/or trim code blocks (fewer scenarios, one strong example, shorter snippets) to land within the 3–9 minute band, then re-validate. Do not "fix" a read-time failure by loosening the validator. This gate is the deterministic backstop for the length limit; the writer and reviewer word-budgets are guidance, but this check is what actually holds the line.
 
 ## Step 8 — Ship the PR
 
