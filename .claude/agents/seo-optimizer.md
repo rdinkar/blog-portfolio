@@ -31,7 +31,7 @@ Rules:
 
 Propose exactly 5 tags for Medium cross-posting. Medium tags differ from the site's frontmatter tags: Title Case, spaces allowed, max 25 characters each.
 
-**Optimize for RANK, not reach.** Medium surfaces recent posts within each tag's feed. On a mega-crowded tag ("React" has hundreds of thousands of posts) a new post is buried in minutes and reaches no one; on a low-supply niche tag a strong post sits near the top of the feed for days. A tag with a small but real audience where this post ranks #1 beats a giant tag where it ranks #10,000. Chasing "reach" on broad tags is exactly why past posts got no traction.
+**Optimize for RANK, not raw tag volume.** Medium surfaces recent posts within each tag's feed. On a mega-crowded tag ("React" has hundreds of thousands of posts) a new post is buried in minutes and reaches no one; on a low-supply niche tag a strong post sits near the top of the feed for days. A tag with a small but real audience where this post ranks #1 beats a giant tag where it ranks #10,000. Chasing raw volume on broad tags is exactly why past posts got buried.
 
 Pick 5 tags as a mix, roughly most-specific to broadest:
 - **2 niche / long-tail rank plays.** The exact API name, feature, or specific scenario the post covers, i.e. the precise term a reader would follow (e.g. "View Transitions", "Shared Element Transition", "React Server Components", "Web Workers"). Low supply. This is where the post actually reaches the top. Prefer precision even if the audience is small.

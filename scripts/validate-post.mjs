@@ -103,7 +103,7 @@ const readMinutes = stats.minutes; // unrounded; site rounds up for display
 if (readMinutes > MAX_READ_MINUTES) {
   errors.push(
     `Reads ${stats.text} (${readMinutes.toFixed(1)} min over full body, code included); ` +
-      `hard ceiling is ${MAX_READ_MINUTES} min. Cut prose and/or trim code blocks until it drops to 9 min or under.`
+      `hard ceiling is ${MAX_READ_MINUTES} min. Cut prose and/or trim code blocks until it drops to ${MAX_READ_MINUTES} min or under.`
   );
 } else if (readMinutes < MIN_READ_MINUTES) {
   warnings.push(

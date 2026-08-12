@@ -1,7 +1,7 @@
 // Regression test for the read-time gate in validate-post.mjs.
 // Guards the bug where an 11-min post shipped because the validator's length
 // check diverged from the site's `reading-time` metric. Run: npm run test:validator
-// The validator must reject a post whose SITE read time exceeds 6 min, computing
+// The validator must reject a post whose SITE read time exceeds 9 min, computing
 // read time identically to src/lib/mdx.tsx (reading-time over the full body,
 // code blocks included).
 import { execSync } from "node:child_process";

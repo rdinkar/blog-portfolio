@@ -17,6 +17,7 @@ const DEAD_PHRASES = [
   "not for a feed spike",
   "raw views do not",
   "5–6 minute",
+  "5-6 minute",
   "MINORITY LANE",
 ];
 
