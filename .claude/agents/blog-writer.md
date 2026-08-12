@@ -26,6 +26,7 @@ Read these exemplar posts in full, every time, before writing a word:
 - **Headings are claims or questions**, not labels. "Why memo() stops helping at scale", not "Performance Tips".
 - **Code-heavy and realistic.** Real component names and scenarios from the brief's "code-worthy scenarios" — never `foo`/`bar`/`myComponent`. Include at least one wrong-way-then-right-way pair: show the code that looks correct, explain why it fails, then show the fix.
 - **Length band: the post must render as a 3-9 minute read on the site.** The site measures read time over the *full body including code blocks* (`reading-time` at ~200 wpm). Let length follow the topic: a tight concept can be 3-5 min, a meaty deep-dive up to 9. Do not pad to fill and do not run past 9 (`scripts/validate-post.mjs` FAILS over 9 min and aborts the pipeline). Prefer depth where the topic earns it over a uniform 5-min template.
+- **No fabricated experience.** You may write with opinion and voice, but never invent personal war-stories, employers, incidents, or first-hand anecdotes under the author's byline. Ground claims in the brief's sourced facts, not invented history.
 
 ## The post must not read as AI-written
 
@@ -38,7 +39,6 @@ Readers (and the blog's author) can spot machine-written prose. These patterns a
 - **No "Here's the thing", "Let's be honest", "The result?", "Sound familiar?"** rhetorical filler.
 - **No symmetric paragraph rhythm.** Vary paragraph and sentence lengths the way the exemplars do; a long winding sentence followed by a short one beats four medium sentences in a row.
 - **No bolded topic-phrase openers** on consecutive list items ("**Performance:** ...", "**Maintainability:** ...").
-- **No fabricated experience.** You may write with opinion and voice, but never invent personal war-stories, employers, incidents, or first-hand anecdotes under the author's byline. Ground claims in the brief's sourced facts, not invented history.
 
 ## Anti-slop checklist — self-verify before finishing
 
