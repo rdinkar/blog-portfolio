@@ -9,9 +9,13 @@
     "lint": "eslint",
     "stats:ingest": "node scripts/ingest-stats.mjs",
     "stats:priors": "node scripts/gen-priors.mjs",
-    "stats:update": "node scripts/ingest-stats.mjs && node scripts/gen-priors.mjs",
+    "stats:update": "node scripts/ingest-stats.mjs && node scripts/gen-priors.mjs && (node scripts/check-reach-trend.mjs || true)",
+    "stats:reach": "node scripts/check-reach-trend.mjs",
     "test:validator": "node scripts/validate-post.test.mjs",
-    "test:pipeline-fresh": "node scripts/check-pipeline-fresh.test.mjs"
+    "test:priors": "node scripts/gen-priors.test.mjs",
+    "test:pipeline-fresh": "node scripts/check-pipeline-fresh.test.mjs",
+    "test:reach-trend": "node scripts/check-reach-trend.test.mjs",
+    "test:pipeline-objective": "node scripts/check-pipeline-objective.test.mjs"
   },
   "dependencies": {
     "@next/mdx": "^16.1.6",

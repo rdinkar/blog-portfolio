@@ -27,6 +27,10 @@ into priors the `blog-researcher` reads on every run.
 5. Commit `performance.json` and `PERFORMANCE_PRIORS.md` **to `main`** (PR or
    direct) so the pipeline's worktree, which is created off `origin/main`, sees
    the updated priors on its next run.
+6. Run `npm run stats:reach` and read the verdict. `COLLECTING` = keep going;
+   `WORKING` = reach tuning is lifting the ceiling; `FALSIFIED` = the content
+   tuning did not work, escalate per the design doc's fallback (disclose AI on
+   Medium, or diversify to owned site + SEO + dev.to).
 
 ## Files
 

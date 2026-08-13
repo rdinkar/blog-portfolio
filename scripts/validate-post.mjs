@@ -14,15 +14,10 @@ import readingTime from "reading-time";
 import { serialize } from "next-mdx-remote/serialize";
 
 const REQUIRED_AUTHOR = "Rahul Dinkar";
-// Hard read-time ceiling. This is the authoritative length gate and it is
-// computed the SAME way the live site computes it (src/lib/mdx.tsx runs
-// `reading-time` over the full MDX body, code blocks included), so what passes
-// here is exactly what renders on the page. The site rounds up, so a post must
-// stay at or under 6.0 minutes to display "5 min read" / "6 min read".
-// Do NOT re-introduce a prose-only word band here: it silently diverges from the
-// site metric (a code-heavy post can be in-band on prose yet read 9+ min), which
-// is exactly how an 11-min post shipped past this validator before.
-const MAX_READ_MINUTES = 6;
+// Hard read-time ceiling. Site-identical (reading-time over the full body, code
+// included). Posts vary in depth, so this is a band, not a fixed 5-min target:
+// anything from the 3-min advisory floor up to 9 min is allowed; over 9 aborts.
+const MAX_READ_MINUTES = 9;
 const MIN_READ_MINUTES = 3; // floor is advisory (warning), not a hard failure
 const MAX_DESCRIPTION_LENGTH = 139;
 
@@ -108,7 +103,7 @@ const readMinutes = stats.minutes; // unrounded; site rounds up for display
 if (readMinutes > MAX_READ_MINUTES) {
   errors.push(
     `Reads ${stats.text} (${readMinutes.toFixed(1)} min over full body, code included); ` +
-      `hard ceiling is ${MAX_READ_MINUTES} min. Cut prose and/or trim code blocks until it drops to 6 min or under.`
+      `hard ceiling is ${MAX_READ_MINUTES} min. Cut prose and/or trim code blocks until it drops to ${MAX_READ_MINUTES} min or under.`
   );
 } else if (readMinutes < MIN_READ_MINUTES) {
   warnings.push(

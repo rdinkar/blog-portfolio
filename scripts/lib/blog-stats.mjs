@@ -7,7 +7,8 @@
  * priors the researcher reads).
  */
 
-// Lanes, highest ROI first. Ranking/priority both use this order.
+// Lane list + tie-break priority order for tag->lane classification. Topic ranking is
+// reach-based and computed in gen-priors.mjs, not from this order.
 export const LANES = ["ai", "interview", "architecture", "react", "js", "other"];
 
 // Frontmatter tag -> lane. Tags not listed here simply do not vote.
