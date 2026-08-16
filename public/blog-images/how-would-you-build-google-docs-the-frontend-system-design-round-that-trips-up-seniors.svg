@@ -1,0 +1,58 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="70%" r="65%">
+      <stop offset="0%" stop-color="#20203a"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="pathA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4dd4c4"/>
+      <stop offset="100%" stop-color="#4dd4c4" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="pathB" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#f2a65a"/>
+      <stop offset="100%" stop-color="#f2a65a" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- title -->
+  <text x="80" y="140" font-family="Inter, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#e8e8f0">How would you build</text>
+  <text x="80" y="204" font-family="Inter, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#e8e8f0">Google Docs?</text>
+  <text x="80" y="252" font-family="Inter, -apple-system, sans-serif" font-size="23" font-weight="500" fill="#4dd4c4">The convergence round: OT vs CRDT</text>
+
+  <!-- two divergent edit streams converging into one document -->
+  <g fill="none" stroke-width="3" stroke-linecap="round">
+    <path d="M215 380 C 400 380, 440 470, 600 470" stroke="url(#pathA)"/>
+    <path d="M985 380 C 800 380, 760 470, 600 470" stroke="url(#pathB)"/>
+    <path d="M600 470 L 600 548" stroke="#8f8fb0" stroke-opacity="0.5"/>
+  </g>
+
+  <!-- client A op node -->
+  <g>
+    <rect x="120" y="348" width="180" height="66" rx="10" fill="#242440" stroke="#4dd4c4" stroke-width="2"/>
+    <text x="210" y="378" font-family="Inter, -apple-system, sans-serif" font-size="19" font-weight="600" fill="#4dd4c4" text-anchor="middle">insert B @1</text>
+    <text x="210" y="400" font-family="Inter, -apple-system, sans-serif" font-size="13" fill="#8f8fb0" text-anchor="middle">client A</text>
+  </g>
+
+  <!-- client B op node -->
+  <g>
+    <rect x="900" y="348" width="180" height="66" rx="10" fill="#242440" stroke="#f2a65a" stroke-width="2"/>
+    <text x="990" y="378" font-family="Inter, -apple-system, sans-serif" font-size="19" font-weight="600" fill="#f2a65a" text-anchor="middle">insert X @0</text>
+    <text x="990" y="400" font-family="Inter, -apple-system, sans-serif" font-size="13" fill="#8f8fb0" text-anchor="middle">client B</text>
+  </g>
+
+  <!-- convergence node -->
+  <circle cx="600" cy="470" r="18" fill="#1a1a2e" stroke="#8f8fb0" stroke-width="2"/>
+  <circle cx="600" cy="470" r="6" fill="#e8e8f0"/>
+
+  <!-- converged document -->
+  <g>
+    <rect x="500" y="548" width="200" height="42" rx="10" fill="#242440" stroke="#e8e8f0" stroke-width="2"/>
+    <text x="600" y="576" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="700" letter-spacing="5" fill="#e8e8f0" text-anchor="middle">XABC</text>
+  </g>
+</svg>
