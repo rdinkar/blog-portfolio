@@ -1,0 +1,145 @@
+---
+title: "How Would You Build Google Docs? The Frontend System Design Round That Trips Up Seniors"
+description: "OT vs CRDT for a real-time collaborative editor: defend Yjs, Figma's last-writer-wins, and offline sync in a frontend system design round"
+date: "2026-08-16"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/how-would-you-build-google-docs-the-frontend-system-design-round-that-trips-up-seniors.svg"
+tags:
+  - system-design
+  - interviews
+  - real-time
+  - crdt
+  - websockets
+---
+
+![How Would You Build Google Docs? The Frontend System Design Round That Trips Up Seniors](/blog-images/how-would-you-build-google-docs-the-frontend-system-design-round-that-trips-up-seniors.svg)
+
+The interviewer says: "Design the frontend for a real-time collaborative editor, like Google Docs or Figma." Within ninety seconds most candidates are drawing boxes labeled WebSocket, Zustand, and a Node server, and they have already lost.
+
+Not because those boxes are wrong. Because they skipped the one question the round is actually testing: when two people type into the same paragraph at the same instant, why do both screens end up showing the same text? Get that wrong and no amount of transport diagramming saves you. Get it right and you can defend a real architecture, RADIO structure and all, instead of just naming one.
+
+## The mistake that loses the room in the first two minutes
+
+The reflex is to treat this as a transport problem. Open a socket, broadcast keystrokes, apply on arrival. That breaks the moment edits overlap, and a good interviewer will immediately construct the overlap.
+
+Here is the naive version. Each client sends its edit as a raw index, and every client applies whatever arrives:
+
+```js
+// Both clients start from the shared string "AC"
+// Client A: insert "B" at index 1  ->  expects "ABC"
+// Client B: insert "X" at index 0  ->  expects "XAC"
+const apply = (doc, op) => doc.slice(0, op.index) + op.char + doc.slice(op.index);
+
+// Client A already has "ABC", B's op {index:0,char:"X"} arrives
+apply("ABC", { index: 0, char: "X" });
+
+// Client B already has "XAC", A's op {index:1,char:"B"} arrives
+apply("XAC", { index: 1, char: "B" });
+```
+
+Client A ends on `XABC`, Client B on `XBAC`. The documents have split, and nothing will ever pull them back. Everything else is plumbing.
+
+## Requirements: pin the product before you pin the algorithm
+
+Use the RADIO framework so you do not ramble: Requirements, Architecture, Data model, Interface, Optimizations. It is the structure interviewers expect, and it stops you burning twenty minutes on cursor colors.
+
+Narrow scope out loud. The questions that actually change the design:
+
+- One central server everyone connects to, or peer-to-peer? Server-authoritative is the common case and simplifies everything downstream.
+- Is the content long-form text (Docs) or discrete objects with properties (Figma shapes)? This single answer drives the consistency model.
+- Must it work offline and reconcile later, or is a live connection assumed?
+- Ten collaborators on a doc is a very different problem from a thousand cursors on one canvas.
+
+State your assumptions and move on. This section earns you the right to say "given a centralized server and long-form text, here is why I would choose X."
+
+## The decision that carries the interview: OT or CRDT
+
+This is where seniority shows. There are two well-understood ways to make concurrent edits converge, and picking on vibes is a red flag.
+
+Operational Transformation (OT) sends operations through a central coordinator that transforms each incoming operation against the ones it has not seen yet, so different apply orders still land on the same result. Google Docs uses OT. It is memory-cheap because the document stays a plain sequence. The cost is correctness: you need a transform function for every pair of operation types, and the pairs explode as you add operations. Even the researchers who formalized OT call the correctness proofs very complicated and error-prone.
+
+CRDTs (Conflict-free Replicated Data Types) are structures designed so concurrent updates deterministically merge with no central authority. Each character gets a stable unique id, so "insert after this id" is unambiguous whatever order updates arrive in. Notion is built on Yjs, the most mature CRDT library in 2026. Merging needs no coordinator and offline works naturally. The cost is memory: a text CRDT stores roughly 16 to 32 bytes per character for ids, tombstones, and clocks. A two-million-character project that is about 2MB under OT can balloon to 34 to 66MB under a naive CRDT, a 17x to 33x difference.
+
+Figma took a third path, and it is the most interesting answer you can give. Figma explicitly rejected OT as "unnecessarily complex for our problem space" because it creates "a combinatorial explosion of possible states." But Figma is not a true CRDT either. The server is the central authority, so they drop all peer-to-peer overhead and keep only the latest value any client sent for a given property. That is last-writer-wins per property, and it works because in a design tool two people rarely fight over the same property of the same object.
+
+So the stance to defend: **the algorithm follows the product, not fashion.** OT for centralized, server-authoritative long-form text. Last-writer-wins for a design tool where same-property conflicts are rare. Full CRDT (Yjs) when you need offline-first with no guaranteed central server. Articulate that mapping and you have outperformed most candidates.
+
+One caveat to raise yourself: modern CRDTs have closed the speed gap. Automerge 2.0 processes about 260,000 keystrokes in roughly 600ms, down from an early two seconds per character, and Yjs handles tens of thousands of operations per second. The case against CRDTs is now mostly memory and payload size, not raw throughput.
+
+## Prove convergence with one transform
+
+You will not build a full OT engine on a whiteboard, but you should hand-transform a single pair. Take the same `"AC"` case that broke earlier and add the transform step:
+
+```js
+// Transform op b so it applies correctly after op a on the same base.
+// Insert-vs-insert: if a inserted at or before b, b shifts right.
+const transform = (b, a) =>
+  a.index <= b.index ? { ...b, index: b.index + a.char.length } : b;
+
+// Client B applied its own op first: "AC" -> "XAC", then A's op arrives
+apply("XAC", transform({ index: 1, char: "B" }, { index: 0, char: "X" }));
+```
+
+That converges on `XABC`. Now score the point out loud: that is one transform for one operation pair. Add delete, formatting, and object moves and you owe a transform for every pair. That growth is exactly why Figma walked away from OT.
+
+## The Figma-style data model you can implement live
+
+If you argue the design-tool case, sketch the store. Figma models a document as a two-level map, `Map<ObjectID, Map<Property, Value>>`, the same as a set of (object, property, value) tuples. Conflicts can only happen at one intersection: the same property on the same object. Everything else merges trivially because it touches a different cell.
+
+```js
+// doc: ObjectID -> Map<Property, { value, seq }>
+function applyServerChange(doc, objectId, prop, value, seq, unacked) {
+  // Flicker prevention: if we have an unacknowledged local edit to this
+  // exact property, keep our optimistic value. Our prediction wins until
+  // the server confirms, so the UI never jumps backward.
+  if (unacked.has(`${objectId}:${prop}`)) return;
+
+  const object = doc.get(objectId) ?? new Map();
+  const current = object.get(prop);
+  if (!current || seq >= current.seq) {
+    object.set(prop, { value, seq }); // last writer wins per property
+    doc.set(objectId, object);
+  }
+}
+```
+
+Two things to name here. First, the flicker rule: Figma discards an incoming server change that conflicts with the client's own unacknowledged local change, treating the optimistic local apply as the best prediction. That is what makes dragging a shape feel solid instead of rubber-banding. Second, name the limitation before you are asked: concurrent edits to the same text property do not merge, one write wins. Acceptable for a design tool, not a text editor, and saying so shows you know the boundary of your own choice.
+
+For child ordering Figma uses fractional indexing: positions are fractions between 0 and 1, and you insert between two siblings by averaging them, no reindexing. Reparenting rejects any move that would create a cycle in the object tree.
+
+## Presence is not part of the document
+
+Here is a gotcha that quietly fails strong candidates: they persist cursors and selections into the shared document. Do not. Presence is ephemeral. It should never be saved, versioned, or replayed on reconnect. Yjs handles this with a separate Awareness CRDT precisely so cursor position, name, and color never pollute the persisted doc.
+
+```js
+// Awareness carries ephemeral presence, kept out of the saved document.
+function usePresence(awareness, localUser, cursorIndex) {
+  useEffect(() => {
+    awareness.setLocalStateField("user", { ...localUser, cursor: cursorIndex });
+    // Yjs sends an awareness heartbeat about every 30s; a peer with no
+    // update for 30s is marked offline and its remote cursor disappears.
+    return () => awareness.setLocalState(null); // clear presence on unmount
+  }, [awareness, localUser, cursorIndex]);
+}
+```
+
+## Offline and reconnect: two strategies, pick for the product
+
+The last thing that separates seniors is reconciliation. A client edits offline, buffering local operations in an outbox, then reconnects. There are two clean answers, and the right one depends on the consistency model you chose.
+
+The Yjs way is incremental. On reconnect, clients exchange state vectors, compact summaries of what each side has already seen, so the server sends only the missing updates instead of the whole document. It also syncs across browser tabs of the same doc over BroadcastChannel, with a localStorage fallback, so a second tab is not treated as a remote peer.
+
+The Figma way is deliberately blunt. On reconnect the client downloads a fresh copy of the document, replays its offline edits on top, then resumes syncing. No state vectors, no delta computation. Simpler to reason about and perfectly fine when documents are not enormous and reconnects are infrequent.
+
+The tradeoff: incremental sync minimizes bandwidth and is the right default for text-heavy CRDT apps, while full re-download buys a much simpler mental model and is defensible for a centralized design tool.
+
+## Transport is the easy part, so treat it that way
+
+WebSocket is the default for editors: bidirectional and low latency, with long-polling as the fallback for hostile networks and WebRTC only if you argued for a decentralized CRDT. Name that in one breath and get back to the sync engine, where the round is won.
+
+## The version of this answer that gets the offer
+
+The interviewer is not asking whether you know WebSockets. They are asking whether you can reason about concurrency and defend one consistency model against the product in front of you, so the algorithm you name is the one it needs, not the one you read about last.
+
+Draw the sync engine, not the server rack. Volunteer the limitation of your own choice before you are asked. And when they push on the two-people-typing case, do not reach for another box. Transform the operation on the whiteboard and show it converge. That is the moment the round turns from a quiz into a conversation between two engineers.
