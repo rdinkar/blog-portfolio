@@ -1,0 +1,51 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#2b2b2b"/>
+      <stop offset="100%" stop-color="#1c1c1c"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="frozen" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e0574a"/>
+      <stop offset="100%" stop-color="#b23a2f"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Title -->
+  <text x="80" y="150" font-family="Inter, -apple-system, sans-serif" font-size="62" font-weight="700" fill="#f5f5f5">Why your UI freezes</text>
+  <text x="80" y="222" font-family="Inter, -apple-system, sans-serif" font-size="62" font-weight="700" fill="#f5f5f5">during heavy work</text>
+
+  <!-- Main thread label -->
+  <text x="80" y="330" font-family="Inter, -apple-system, sans-serif" font-size="20" font-weight="500" letter-spacing="3" fill="#8a8a8a">MAIN THREAD</text>
+
+  <!-- One long blocking task -->
+  <text x="80" y="392" font-family="Inter, -apple-system, sans-serif" font-size="17" font-weight="500" fill="#e0574a">one long task · blocked</text>
+  <rect x="80" y="405" width="1040" height="34" rx="6" fill="url(#frozen)"/>
+  <text x="600" y="428" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#ffffff" fill-opacity="0.9">1000 ms &#8212; no paint, no input</text>
+
+  <!-- Sliced with yields -->
+  <text x="80" y="512" font-family="Inter, -apple-system, sans-serif" font-size="17" font-weight="500" fill="#4ec9b0">sliced by deadline &#183; scheduler.yield()</text>
+
+  <!-- chunks with gaps; ~50ms bursts, small yield gaps -->
+  <g fill="#4ec9b0">
+    <rect x="80"  y="525" width="150" height="34" rx="6"/>
+    <rect x="252" y="525" width="150" height="34" rx="6"/>
+    <rect x="424" y="525" width="150" height="34" rx="6"/>
+    <rect x="596" y="525" width="150" height="34" rx="6"/>
+    <rect x="768" y="525" width="150" height="34" rx="6"/>
+    <rect x="940" y="525" width="180" height="34" rx="6"/>
+  </g>
+  <!-- yield markers in the gaps -->
+  <g fill="#f5f5f5" fill-opacity="0.55">
+    <circle cx="241" cy="542" r="3.5"/>
+    <circle cx="413" cy="542" r="3.5"/>
+    <circle cx="585" cy="542" r="3.5"/>
+    <circle cx="757" cy="542" r="3.5"/>
+    <circle cx="929" cy="542" r="3.5"/>
+  </g>
+</svg>
