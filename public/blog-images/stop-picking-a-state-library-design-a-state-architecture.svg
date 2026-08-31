@@ -1,0 +1,65 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="26%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#2a2a3f"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0V34" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <style>
+      .t { font-family: Inter, -apple-system, sans-serif; fill: #f4f4f5; }
+      .lbl { font-family: Inter, -apple-system, sans-serif; fill: #cdd0e0; font-size: 21px; }
+      .dst { font-family: Inter, -apple-system, sans-serif; fill: #1a1a2e; font-size: 20px; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Title -->
+  <text class="t" x="80" y="118" font-size="52" font-weight="800" letter-spacing="-1">Design a state</text>
+  <text class="t" x="80" y="178" font-size="52" font-weight="800" letter-spacing="-1">architecture</text>
+  <text class="t" x="80" y="232" font-size="24" font-weight="400" fill="#8f93ab">Route each kind of state to its own tool</text>
+
+  <!-- Single hub node -->
+  <circle cx="300" cy="450" r="52" fill="none" stroke="#7c5cff" stroke-width="2"/>
+  <circle cx="300" cy="450" r="7" fill="#7c5cff"/>
+  <text class="t" x="300" y="546" font-size="20" text-anchor="middle" fill="#8f93ab">state</text>
+
+  <!-- Routing lines from hub to five destinations -->
+  <g fill="none" stroke="#7c5cff" stroke-width="2" stroke-opacity="0.55">
+    <path d="M352 434 C 520 360, 620 320, 760 316"/>
+    <path d="M352 440 C 520 400, 620 372, 760 380"/>
+    <path d="M352 450 C 540 450, 620 448, 760 444"/>
+    <path d="M352 460 C 520 500, 620 524, 760 508"/>
+    <path d="M352 466 C 520 540, 620 584, 760 572"/>
+  </g>
+
+  <!-- Destination chips -->
+  <g>
+    <rect x="760" y="292" width="360" height="48" rx="10" fill="#f4b942"/>
+    <text class="dst" x="784" y="322">Server  →  TanStack Query</text>
+
+    <rect x="760" y="356" width="360" height="48" rx="10" fill="#f4f4f5"/>
+    <text class="dst" x="784" y="386">Form  →  React Hook Form</text>
+
+    <rect x="760" y="420" width="360" height="48" rx="10" fill="#7c5cff"/>
+    <text class="dst" x="784" y="450" fill="#ffffff">URL  →  Search Params</text>
+
+    <rect x="760" y="484" width="360" height="48" rx="10" fill="#f4f4f5"/>
+    <text class="dst" x="784" y="514">Global  →  Zustand</text>
+
+    <rect x="760" y="548" width="360" height="48" rx="10" fill="#f4b942"/>
+    <text class="dst" x="784" y="578">Local  →  useState</text>
+  </g>
+
+  <!-- endpoint dots -->
+  <g fill="#7c5cff">
+    <circle cx="760" cy="316" r="4"/>
+    <circle cx="760" cy="380" r="4"/>
+    <circle cx="760" cy="444" r="4"/>
+    <circle cx="760" cy="508" r="4"/>
+    <circle cx="760" cy="572" r="4"/>
+  </g>
+</svg>

@@ -1,0 +1,187 @@
+---
+title: "Stop Picking a State Library. Design a State Architecture Instead."
+description: "React state management by category (server, form, URL, global), plus the Zustand selectors React Compiler 1.0 breaks and how to fix them."
+date: "2026-08-26"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/stop-picking-a-state-library-design-a-state-architecture.svg"
+tags:
+  - react
+  - architecture
+  - state-management
+  - frontend
+---
+
+![Stop Picking a State Library. Design a State Architecture Instead.](/blog-images/stop-picking-a-state-library-design-a-state-architecture.svg)
+
+The reason your React state feels messy is not that you picked the wrong library.
+
+It is that you are using one bucket for five different kinds of state.
+
+User profile from the API, a multi-step wizard form, the active filter in the URL, a sidebar-open flag, the current draft of an inline editor. All of it lives in the same store, and you keep reaching for the same tool no matter what the data actually needs. By the end of this post you will have a routing table that assigns each category of state to the tool built for it, plus a checklist for the thing that quietly broke this pattern in late 2025: React Compiler 1.0.
+
+The library debate ("Redux vs Zustand vs Jotai") is the wrong debate. There is no single best store. There is a correct routing table, and senior engineers design that first.
+
+## Why one store for everything rots
+
+Watch what happens when the same store holds server data and client data.
+
+```tsx
+// The store that slowly becomes a landfill
+const useAppStore = create((set) => ({
+  user: null,
+  userLoading: false,
+  userError: null,
+  wizardStep: 0,
+  wizardValues: {},
+  activeFilter: "all",
+  sidebarOpen: false,
+  fetchUser: async (id) => {
+    set({ userLoading: true });
+    try {
+      const res = await fetch(`/api/users/${id}`);
+      set({ user: await res.json(), userLoading: false });
+    } catch (e) {
+      set({ userError: e, userLoading: false });
+    }
+  },
+}));
+```
+
+Every one of those fields has different physics. `user` lives on a server, can change without the user touching anything, and needs cache correctness. `wizardValues` needs validation and dirty tracking. `activeFilter` needs to survive a page refresh and a shared link. `sidebarOpen` is a boolean that never leaves the tab.
+
+Cramming them together means you hand-write `userLoading` and `userError` for data you do not own, you fire a `useEffect` fetch on mount, and you get stale reads plus duplicate requests when two components want the same user. This is the single most common state anti-pattern I see in review: treating server state like client state.
+
+Client state lives entirely in the browser. Server state lives remotely and can change independently of the user. The moment you accept those are different problems, the routing table writes itself.
+
+## The routing table senior engineers actually use
+
+Five categories, five destinations. This is the whole framework.
+
+- Server state (anything fetched, cached, revalidated): TanStack Query.
+- Form state (inputs, validation, dirty/submit lifecycle): React Hook Form with Zod.
+- URL and shareable state (filters, tabs, pagination): `useSearchParams`.
+- Local UI state (a toggle, a hover, a controlled input): `useState` or `useReducer`.
+- Global client state (auth session, theme, cross-tree flags): Zustand, or Jotai when the state is a graph of interdependent derived atoms.
+
+Now refactor that landfill store. The server slice leaves entirely:
+
+```tsx
+// Server state: TanStack Query owns loading, error, cache, dedup
+function useUser(id: string) {
+  return useQuery({
+    queryKey: ["user", id],
+    queryFn: () => fetch(`/api/users/${id}`).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+```
+
+The `userLoading`, `userError`, and `fetchUser` boilerplate is deleted, not moved. The wizard goes to React Hook Form. The filter goes to the URL:
+
+```tsx
+// URL state: refreshable, shareable, back-button friendly
+function useActiveFilter() {
+  const [params, setParams] = useSearchParams();
+  const filter = params.get("filter") ?? "all";
+  const setFilter = (next: string) => setParams({ filter: next });
+  return [filter, setFilter] as const;
+}
+```
+
+What is left for the global store? Almost nothing. The sidebar flag, maybe the auth session. That is the point. When you route by category, the "global store" shrinks to the handful of values that are genuinely global and genuinely client-side.
+
+This is where I will take a stance some people will fight me on: most apps that reach for Redux Toolkit do not have a global-state problem, they have a server-state problem wearing a Redux costume. Redux usage in new React projects has dropped roughly 34% since 2021, and that is not fashion. RSC, Zustand, and TanStack Query absorbed the jobs Redux used to do. Redux Toolkit still pulls around 30 million downloads a month, so it is declining, not dead, and it remains the right call for large teams that need strict patterns, middleware, and time-travel debugging. For everyone else it is 11 to 14KB min+gzip and about 34ms of parse time under a 4x CPU slowdown, versus roughly 1 to 3KB and 8ms for Zustand, to solve a problem you should have routed elsewhere.
+
+## Server state is not client state: the staleTime that stops double fetches
+
+Here is the concrete version of that argument. Two components mount and both want the same dashboard summary.
+
+With TanStack Query's default `staleTime` of 0, every mount considers its cached data immediately stale and kicks off a background refetch. Mount two consumers and you can watch two network requests leave for identical data.
+
+```tsx
+// staleTime: 0 (default): each consumer treats cache as stale and refetches
+useQuery({ queryKey: ["summary"], queryFn: getSummary });
+```
+
+Set a `staleTime` and the cache is trusted for that window. Reads inside the window are served instantly from cache with no refetch, and once the data goes stale it revalidates in the background instead of blocking the UI.
+
+```tsx
+// staleTime: 5s: cached reads are instant, revalidation happens quietly
+useQuery({ queryKey: ["summary"], queryFn: getSummary, staleTime: 5000 });
+```
+
+You cannot express this correctly in a plain Zustand slice without rebuilding a cache, a request deduper, and a revalidation policy. That is TanStack Query's entire job. Reinventing it by hand is how the landfill store got started.
+
+## The 2026 twist: React Compiler removes the reason you hand-tuned memoization
+
+React Compiler shipped stable on October 7, 2025, and Next.js 16 now ships it built in. React 19.2 landed October 1, 2025 and is patched into 2026. If you are on a recent stable Next, the compiler is either on or one flag away.
+
+This matters for state architecture because a big part of why these libraries exist was manual memoization. Context re-renders every consumer when any part of its value changes, so people reached for external stores and hand-written selectors to get targeted updates. The compiler automates that memoization. Daishi Kato, who wrote both Zustand and Jotai, put it plainly: the React Compiler will address the limitations of React Context via automatic memoization. Vendor benchmarks report it cutting unnecessary re-renders somewhere in the 20 to 40% range and often beating hand-written `memo`.
+
+So the honest question in 2026 is whether you even need a store. My answer: less often than before, but the store still wins for cross-tree updates, and the compiler will not save Context there.
+
+## Why external stores still beat Context after the compiler
+
+The compiler makes Context cheaper. It does not change what Context fundamentally does. Context still re-renders even when only a small slice of the value changed, because the compiler cannot observe when an external store mutates, so it stays conservative about memoizing values derived from store selectors.
+
+Concretely: a fast-changing value in Context re-renders its whole subtree.
+
+```tsx
+// A cursor position in Context: every consumer subtree re-renders on move
+const CursorContext = createContext({ x: 0, y: 0 });
+```
+
+A Zustand selector subscribes to exactly the slice a component reads, so only that component updates when the value changes. The out-of-React store and Jotai's atom model give you composability and targeted updates Context cannot replicate, compiler or not. The selector still does real work the compiler will not do for you, which is exactly why the store earns its place.
+
+## The compiler gotcha that will throw in your face
+
+This is the part to screenshot before your next upgrade. Zustand's auto-generated selector pattern breaks under React Compiler.
+
+```tsx
+// Looks clean. Throws under React Compiler.
+const bears = useBearStore.use.bears();
+// "Should have a queue. You are likely calling Hooks
+//  conditionally, which is not allowed."
+```
+
+Plain destructuring of the store hook breaks the same way:
+
+```tsx
+// Also breaks: subscribes to the whole store, trips the compiler
+const { bears, honey } = useBearStore();
+```
+
+The auto-generated `.use` accessor and bare destructuring both confuse the compiler's hook analysis. The maintainers now call auto-generated selectors "not a good pattern in the modern React." Three fixes work.
+
+Use an explicit selector function, which is the one I default to:
+
+```tsx
+const bears = useBearStore((state) => state.bears);
+```
+
+Wrap multi-field reads in `useShallow` so referential equality holds:
+
+```tsx
+import { useShallow } from "zustand/react/shallow";
+
+const { bears, honey } = useBearStore(
+  useShallow((state) => ({ bears: state.bears, honey: state.honey }))
+);
+```
+
+Or move to the `useStore.hooks.useBears()` naming convention instead of the `.use` accessor. Any of the three keeps the compiler happy.
+
+One timeliness note, because "on the latest stable Next" is a moving target: the August 2026 Next.js security release was pulled forward to August 25, 2026 (16.3.3 and 15.5.24) to patch two critical vulnerabilities. Pin your versions when you test the compiler migration so you are debugging one variable, not two.
+
+## Your migration checklist for Monday
+
+Before you touch a store, sort the state:
+
+1. List every field in your current store and label it: server, form, URL, local, or global-client.
+2. Move every server field to TanStack Query and delete the loading/error/fetch boilerplate. Set a deliberate `staleTime`.
+3. Move forms to React Hook Form with Zod; move filters, tabs, and pagination to `useSearchParams`.
+4. Whatever is left is your real global store. If it is one auth object and a theme, you may not need Redux at all.
+5. Turn on React Compiler, then grep your Zustand code for `.use.` accessors and bare `useMyStore()` destructuring. Convert them to explicit selectors or `useShallow`.
+
+The skill that ages well is not knowing Zustand's API or Redux's middleware chain. It is looking at a piece of state and instantly knowing which category it belongs to. Get the routing table right and the library question mostly answers itself, and the store you are left with is small enough that the compiler debate stops being scary.
