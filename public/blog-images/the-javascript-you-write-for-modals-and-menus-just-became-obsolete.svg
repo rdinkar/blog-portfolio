@@ -1,0 +1,50 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="74%" cy="40%" r="58%">
+      <stop offset="0%" stop-color="#1f2a4a"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L7 3 L0 6 Z" fill="#5eead4"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Declarative wiring: a button invokes a native modal, no JS -->
+  <g transform="translate(700 315)">
+    <!-- Trigger button -->
+    <rect x="0" y="-34" width="150" height="68" rx="12" fill="#242440" stroke="#4f7cff" stroke-width="2.5"/>
+    <rect x="24" y="-9" width="102" height="9" rx="4.5" fill="#4f7cff" fill-opacity="0.85"/>
+    <text x="75" y="-46" font-family="Inter, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#4f7cff" letter-spacing="0.5" text-anchor="middle">command</text>
+
+    <!-- Declarative tether: commandfor -->
+    <path d="M150 0 H286" stroke="#5eead4" stroke-width="2.5" stroke-dasharray="4 5" fill="none" marker-end="url(#arrow)"/>
+    <text x="222" y="-16" font-family="Inter, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#5eead4" letter-spacing="0.5" text-anchor="middle">commandfor</text>
+
+    <!-- Native popover / modal panel -->
+    <rect x="300" y="-92" width="196" height="184" rx="14" fill="#1a1a2e" stroke="#5eead4" stroke-width="2.5"/>
+    <rect x="326" y="-66" width="120" height="11" rx="5.5" fill="#5eead4" fill-opacity="0.85"/>
+    <rect x="326" y="-40" width="144" height="9" rx="4.5" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="326" y="-22" width="128" height="9" rx="4.5" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="326" y="-4" width="136" height="9" rx="4.5" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="326" y="44" width="76" height="30" rx="8" fill="none" stroke="#4f7cff" stroke-width="2"/>
+    <text x="459" y="-108" font-family="Inter, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#5eead4" letter-spacing="1" text-anchor="middle">popover</text>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="212" font-family="Inter, -apple-system, sans-serif" font-size="64" font-weight="800" fill="#ffffff" letter-spacing="-1.5">Modals &amp; Menus,</text>
+  <text x="80" y="284" font-family="Inter, -apple-system, sans-serif" font-size="64" font-weight="800" fill="#ffffff" letter-spacing="-1.5">Now Native</text>
+
+  <text x="82" y="352" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#5eead4" letter-spacing="0.5">The state machine, zero JavaScript.</text>
+
+  <!-- Zero-JS marker as part of the concept -->
+  <g transform="translate(82 452)">
+    <rect x="0" y="0" width="150" height="44" rx="22" fill="none" stroke="#4f7cff" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="75" y="29" font-family="Inter, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#ffffff" fill-opacity="0.72" letter-spacing="1" text-anchor="middle">0 KB JS</text>
+  </g>
+</svg>
