@@ -1,0 +1,124 @@
+---
+title: "Why Claude Code Is Probably Still Ignoring Your AGENTS.md (and the One-Line Fix)"
+description: "Claude Code 2.1.277 skips AGENTS.md when a project CLAUDE.md exists. Why the @AGENTS.md import beats the native read and symlinks"
+date: "2026-09-23"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/why-claude-code-is-probably-still-ignoring-your-agents-md-and-the-one-line-fix.svg"
+tags:
+  - ai
+  - claude-code
+  - agents-md
+  - developer-tools
+  - code-review
+---
+
+![Why Claude Code Is Probably Still Ignoring Your AGENTS.md (and the One-Line Fix)](/blog-images/why-claude-code-is-probably-still-ignoring-your-agents-md-and-the-one-line-fix.svg)
+
+Your team wrote an AGENTS.md so Codex, Cursor and Copilot all run the same test command and follow the same PR rules. On September 18, Claude Code v2.1.277 started reading it too, and the Hacker News thread about it ran to 286 comments. You upgraded. Claude is still ignoring the file.
+
+That's the documented default. Claude Code reads AGENTS.md only when there is no CLAUDE.md anywhere from your working directory upward, and it skips the file without an error. Below: the precedence rules that trip people up, a one-line CLAUDE.md that works in every session type, and how one shared file makes AI-written PRs more consistent across agents.
+
+## What shipped on September 18, minus the headline
+
+The v2.1.277 changelog entry reads: "Added AGENTS.md support: in a project with no CLAUDE.md, Claude Code reads AGENTS.md instead; change it under "Project instructions" in `/config` (not yet on Bedrock, Vertex or Foundry)". Claude Code engineer Thariq Shihipar described it the same way, as quoted by The Register: "if there is no CLAUDE.md in a folder, Claude will check for and use AGENTS.md."
+
+It ships as a built-in plugin, `agents-md@builtin`, with no separate price, and the docs name no plan restriction. The fine print matters more. Per the memory docs, the feature is off in sessions that don't fetch feature flags from Anthropic (Amazon Bedrock, other third-party providers, or telemetry disabled), in the first session after you install or upgrade, and if you disable the built-in `agents-md` plugin.
+
+The format itself comes from outside Anthropic. The Agentic AI Foundation under the Linux Foundation stewards it, and agents.md lists 20+ supporting tools, including OpenAI Codex, GitHub Copilot, Cursor, Aider, Zed and JetBrains Junie.
+
+## Does this change anything if your team only uses Claude Code?
+
+If everyone on your team uses only Claude Code and you already have a CLAUDE.md, nothing changed for you. You can stop here.
+
+It matters if people on different agents share your repo, including open source contributors who bring their own tools. It matters most if you already have both files, because that's where the default does the opposite of what you'd assume.
+
+## Why your AGENTS.md is probably being skipped
+
+The default value of the new setting is `claude-md-or-agents-md`. Read the "or" literally. Claude reads AGENTS.md only when there is no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in your working directory or any directory above it.
+
+Two cases catch teams. A CLAUDE.md at the root of a monorepo is enough to stop Claude reading the AGENTS.md in the package you're working from, because the root is above you. And a personal `CLAUDE.local.md` counts as well, so the developer who adds a gitignored notes file has quietly switched AGENTS.md off for themselves only.
+
+A few files don't count and load alongside AGENTS.md: your user-level `~/.claude/CLAUDE.md`, your organization's managed CLAUDE.md, and `.claude/rules/` files.
+
+Old workarounds also misbehave now. The docs note that a `SessionStart` hook which prints AGENTS.md adds a second copy to context, and a CLAUDE.md that tells Claude in words to read AGENTS.md only works if Claude decides to open the file.
+
+## Use it this week: the naive setup vs the one that holds
+
+Here's how most developers will adopt it. Upgrade, confirm the version, assume the job is done:
+
+```bash
+claude --version
+```
+
+If the repo, a parent directory, or your own `CLAUDE.local.md` provides a CLAUDE.md, Claude keeps reading only that, and your carefully maintained AGENTS.md is dead weight. Even without a CLAUDE.md, the native read silently doesn't happen on Bedrock, Vertex, Foundry or with telemetry off.
+
+The better setup makes AGENTS.md the single source for tool-neutral rules (build and test commands, style, PR rules, security notes) and keeps a thin CLAUDE.md for Claude-only rules like plan mode, hooks and skills. That CLAUDE.md starts with an import:
+
+```markdown
+@AGENTS.md
+
+## Claude Code
+
+Use plan mode for changes under `src/billing/`.
+```
+
+The import doesn't depend on the new feature. Per the docs, it works on Bedrock, Vertex and Foundry and with telemetry disabled, and it never double-loads whatever the setting says. It also answers swyx's objection in the HN thread that blindly applying agents.md is probably an antipattern because prompts should be tuned per model. Shared rules go in the shared file, and model-specific tuning goes below the import.
+
+If you'd rather have Claude read both files natively, set it in `~/.claude/settings.json`, a `--settings` file, or managed settings:
+
+```json
+{
+  "pluginConfigs": {
+    "agents-md@builtin": {
+      "options": { "instructionFiles": "claude-md-and-agents-md" }
+    }
+  }
+}
+```
+
+In this mode each directory's CLAUDE.md loads first and its AGENTS.md after, and an AGENTS.md that CLAUDE.md already imports or symlinks to isn't read twice. The catch: a project's `.claude/settings.json` is ignored for this option, so you can't commit it for the team. Each developer sets it, or an admin pushes it through managed settings.
+
+The third option is a symlink:
+
+```bash
+ln -s AGENTS.md CLAUDE.md
+```
+
+An HN commenter called this "fine if you don't need to git checkout the repo on Windows," and the docs agree. On Windows, Git checks a committed symlink out as a plain text file unless `core.symlinks` is enabled. Claude's Edit and Write tools also refuse to write through a symlink. Use the import.
+
+Whichever you pick, verify it. Confirm `claude --version` shows v2.1.277 or later. In `/config`, check that **Project instructions** isn't set to `claude-md` or `managed-only`; if the setting doesn't appear at all, your session can't load AGENTS.md natively. Run `/memory` and look for the AGENTS.md path (listed from v2.1.280 on), or, with the import, run `/context` and confirm `CLAUDE.md` appears under **Memory files**. Native loads also print a line like `no CLAUDE.md found; AGENTS.md loaded: /home/you/repo/AGENTS.md`.
+
+## One file for every agent is a quality lever, if you treat it like code
+
+Once one file drives Codex, Copilot, Cursor and Claude Code, the test command, the lint gate and the testing expectations are identical no matter which agent wrote the PR. The sample on agents.md includes the line "Add or update tests for the code you change, even if nobody asked." Put that in your AGENTS.md and reviewers get one baseline to hold every AI-authored PR against.
+
+That also means AGENTS.md now steers every agent your team runs. Review changes to it in PRs the way you'd review a change to your CI config. A one-line edit to the test command changes what every agent does next.
+
+Keep it short. One HN commenter asked how you can be sure the file "isn't just clouding context with nonsense." There's no measurement for that, but the docs say "The more specific and concise your instructions, the more consistently Claude follows them." Treat a sprawling AGENTS.md as a smell.
+
+And don't put hard rules there. Instructions steer the agent, but nothing in them stops it. The docs point to a PreToolUse hook when you need to block an action regardless of what Claude decides. "Never run migrations against production" belongs in a hook or a CI gate, with AGENTS.md explaining why.
+
+## Where the native read fails silently
+
+The native read depends on a remote flag. The docs confirm it needs feature-flag fetching from Anthropic but give no reason. Issue #95690, a user report with no maintainer reply, says the flag is `tengu_agents_md_mod` and that `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns the feature off, so locked-down corporate setups fail silently.
+
+Loading is also intermittent on 2.1.278. Issue #95589 describes the same directory, same files and same flag, with some interactive sessions loading nothing and no warning. There's no explanation yet, since the issue is open with no maintainer reply. That alone is reason not to rely on the native path for team-wide rules.
+
+Several conventions from other tools get no equivalent. Claude does not read `AGENTS.local.md`, `AGENTS.override.md`, or anything under a `.agents/` directory, so the HN commenter who warned that Claude Code "still won't detect skills on .agents/skills" is right. A user-level `~/AGENTS.md` isn't documented either. The docs name `~/.claude/CLAUDE.md` as the user-level file, and issue #95589 shows a `~/.claude/AGENTS.md` being loaded but labeled as "Project", so treat that as undocumented behavior.
+
+For company code, two gaps matter. `InstructionsLoaded` hooks don't fire for a natively read AGENTS.md, which weakens any audit logging built on that hook. An external `@path` import inside AGENTS.md never prompts you: it loads only if you already approved external imports for this project, and is silently skipped otherwise.
+
+## The verdict: adopt now, but through the import
+
+Adopt it this week, and don't lean on the native fallback to do it. The `@AGENTS.md` import in a thin CLAUDE.md works in every session type, never double-loads, and gives you one instructions file across Codex, Copilot, Cursor and Claude Code today. The native read is flag-gated, silent when it fails, and has an open intermittent-loading bug. You could reasonably wait for that bug to close, but the import costs you one line and doesn't care whether it ever does.
+
+The one thing to do: open the repo your team argues about most, add a CLAUDE.md whose first line is `@AGENTS.md`, and run `/context`. If you can't see AGENTS.md reaching your agent, you have no idea what rules it's following, and neither does your reviewer.
+
+## Also this week: Pro now defaults to Opus, and cheap agents got cheaper
+
+[Anthropic released Claude Opus 5.5](https://www.anthropic.com/claude-opus-5-5) at $4 input and $20 output per Mtok, claiming it costs 40% less than Opus 5 on typical workloads (September 22, and in Claude Code from [2.1.280](https://code.claude.com/docs/en/changelog), which also switched the Pro and Team Standard default from Sonnet to Opus). If you're on Pro, you're burning Opus-sized usage by default, so check your limits or switch back in the model picker.
+
+[OpenAI priced GPT-6 Sol and Luna](https://developers.openai.com/api/docs/pricing) on September 22: Sol at $2 input and $10 output per Mtok, Luna at $0.10 and $0.50, and both run in Codex via `codex --model gpt-6-sol` or `codex --model gpt-6-luna`. [In Copilot](https://github.blog/changelog/2026-09-22-openais-gpt-6-sol-and-gpt-6-luna-now-available/), Sol is on Pro+, Max, Business and Enterprise, Luna is also on Pro, and new models are enabled automatically unless an admin turns them off. Luna's pricing makes high-volume CI and triage agents cheap enough to try.
+
+[Copilot code review now tracks findings across rounds](https://github.blog/changelog/2026-09-18-copilot-code-review-an-improved-review-experience). Since September 18, findings are grouped as Open, Resolved since last review and Previously missed, and auto-resolution respects replies that keep an issue open. GitHub doesn't say which plans get it, but re-review rounds on long PRs should get less noisy.
