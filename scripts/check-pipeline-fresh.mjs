@@ -29,6 +29,7 @@ const targetRef = process.argv[3] || "origin/main";
 const PIPELINE_PATHS = [
   ".claude/agents",
   ".claude/skills/weekly-blog-pipeline",
+  ".claude/skills/ai-dev-weekly",
   "scripts/validate-post.mjs",
 ];
 
