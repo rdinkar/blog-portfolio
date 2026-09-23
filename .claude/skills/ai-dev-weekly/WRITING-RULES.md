@@ -17,9 +17,11 @@ Examples come from everyday web and full-stack work, where the author's byline i
 Read these posts in full before writing or reviewing:
 
 1. `content/blog/how-senior-frontend-engineers-use-ai-at-work.mdx`: the AI-lane breakout. Concrete, workflow-level, opinionated.
-2. `content/blog/you-dont-have-a-prompt-problem-you-have-a-layering-problem.mdx`: the AI register. Mechanics, not vibes.
-3. `content/blog/your-mcp-servers-are-eating-the-context-window.mdx`: a timely AI development turned into practical advice.
+2. `content/blog/using-ai-for-frontend-performance-debugging-practical-wins-and-hard-limits.mdx`: practical wins and hard limits. The "use it this week" and "where it breaks" register.
+3. `content/blog/designing-frontend-systems-with-ai-in-the-loop-what-changes-what-doesnt.mdx`: what changes for the reader and what doesn't.
 4. `content/blog/how-react-performance-actually-fails-at-scale.mdx`: the house voice. Problem-first, short punchy paragraphs.
+
+All four read in 4-7 minutes. Match their register and their length, not their topics.
 
 ## Voice rules
 
@@ -31,13 +33,13 @@ Read these posts in full before writing or reviewing:
 - **Second person and first person plural.** "You'll notice...", "we keep seeing...".
 - **Headings are claims or questions,** never labels. "Why the default review mode misses the bugs that matter", not "Code Review".
 - **Concrete over general.** Real commands, config files, prompts, file names, and scenarios ("a flaky checkout E2E test", "a 400-line PR touching the billing service"). Never `foo`/`bar`.
-- **Length.** The post must render as a 3-9 minute read over the full body, code included (`scripts/validate-post.mjs` fails anything over 9). The lead gets roughly 80% of the words.
+- **Length.** Target 1,100-1,600 words in total, code included. The post must render as a 3-9 minute read over the full body (`scripts/validate-post.mjs` fails anything over 9 minutes, which is about 1,800 words). The lead gets roughly 80% of the words.
 - **No fabricated experience.** Never invent personal stories, employers, incidents, measurements, or "I tried it and..." claims under the author's byline. Opinion is welcome; invented history is not.
 
 ## Series rules (the trust contract)
 
 - **Attribute vendor claims.** "Anthropic says...", "in OpenAI's own benchmark...". A vendor number is never stated as fact.
-- **Commands and config are verbatim.** Every command, flag, config snippet, and prompt snippet comes from the brief, which copied it from official docs. Never improvise syntax.
+- **Commands and config are verbatim.** Every command, flag, config snippet, and prompt snippet comes from the brief, which copied it from official docs. Never improvise syntax. Install commands and package names appear exactly as the official docs give them.
 - **No hype.** No "revolutionary", "groundbreaking", "insane", "game-changing", "10x", and no capability claim stronger than its source.
 - **Date and availability.** State when the development happened and who can use it (plan, tier, waitlist, region).
 - **Say who can skip it.** "If you only X, you can ignore this" earns trust.

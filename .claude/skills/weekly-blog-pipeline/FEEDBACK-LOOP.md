@@ -35,7 +35,10 @@ into priors the `blog-researcher` reads on every run.
    2026-09-23; see `.claude/skills/ai-dev-weekly/SKILL.md`). It applies the same
    thresholds to `ai`-lane posts dated on or after that day only. `FALSIFIED`
    there means the theme change did not lift the ceiling either, so the next
-   lever is distribution, not more content tuning.
+   lever is distribution, not more content tuning. It counts every ai-lane post
+   dated on or after that day (the tags ai, llm, agent, agents, mcp, prompt, and
+   workflow all map to that lane), so check whether any hand-written AI post
+   from that period is in the count before reading the verdict.
 
 ## Files
 
