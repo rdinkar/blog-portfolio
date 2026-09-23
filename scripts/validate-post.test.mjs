@@ -32,12 +32,12 @@ tags:
 ${body}
 `;
 
-function run(name, body, expectPass, mustContain) {
+function run(name, body, expectPass, mustContain, extraArgs = "") {
   const file = path.join(blogDir, `${name}.mdx`);
   fs.writeFileSync(file, fm(body));
   let code = 0, out = "";
   try {
-    out = execSync(`node ${VALIDATOR} ${file}`, { stdio: ["pipe", "pipe", "pipe"] }).toString();
+    out = execSync(`node ${VALIDATOR} ${file} ${extraArgs}`, { stdio: ["pipe", "pipe", "pipe"] }).toString();
   } catch (e) {
     code = e.status; out = (e.stdout?.toString() || "") + (e.stderr?.toString() || "");
   }
@@ -76,5 +76,10 @@ allOk &= run("in-band-eight-min", eightMin, true);
 allOk &= run("too-long", long, false, "ceiling");
 allOk &= run("table-in-body", withTable, false, "table");
 allOk &= run("table-in-code-fence", tableInCodeFence, true);
+// --require-tag: the ai-dev pipeline passes `--require-tag ai` so its posts land
+// in the ai lane its reach verdict measures. Without the flag (CI), no change.
+allOk &= run("require-tag-present", short, true, undefined, "--require-tag react");
+allOk &= run("require-tag-missing", short, false, 'must include "ai"', "--require-tag ai");
+allOk &= run("require-tag-no-value", short, false, "--require-tag needs", "--require-tag");
 fs.rmSync(tmp, { recursive: true, force: true });
 process.exit(allOk ? 0 : 1);
