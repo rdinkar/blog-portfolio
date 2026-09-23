@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { LANES } from "./lib/blog-stats.mjs";
 
 export const PIPELINE_START = "2026-06-11";
 export const TUNING_ROLLOUT = "2026-08-12"; // set to the date this change merges
@@ -57,6 +58,9 @@ export function readOptions(argv) {
   });
   if (values.since !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(values.since)) {
     throw new Error(`--since must be YYYY-MM-DD, got: ${values.since}`);
+  }
+  if (values.lane !== undefined && !LANES.includes(values.lane)) {
+    throw new Error(`--lane must be one of ${LANES.join(", ")}, got: ${values.lane}`);
   }
   return { lane: values.lane ?? null, since: values.since ?? TUNING_ROLLOUT };
 }

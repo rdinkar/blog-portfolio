@@ -59,5 +59,9 @@ threw = false;
 try { readOptions(["--lane"]); } catch { threw = true; }
 assert("options-missing-value-throws", threw);
 
+threw = false;
+try { readOptions(["--lane", "AI"]); } catch { threw = true; }
+assert("options-unknown-lane-throws", threw);
+
 console.log(ok ? "PASS check-reach-trend" : "FAIL check-reach-trend");
 process.exit(ok ? 0 : 1);
