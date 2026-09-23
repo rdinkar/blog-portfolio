@@ -23,6 +23,7 @@ git("config", "user.email", "t@t.t");
 git("config", "user.name", "t");
 write(".claude/agents/seo-optimizer.md", "criteria v1\n");
 write(".claude/skills/weekly-blog-pipeline/SKILL.md", "skill v1\n");
+write(".claude/skills/ai-dev-weekly/SKILL.md", "ai skill v1\n");
 write("scripts/validate-post.mjs", "// validator v1\n");
 write("README.md", "readme v1\n");
 git("add", "-A");
@@ -43,6 +44,13 @@ write("README.md", "readme v2\n");
 git("add", "-A");
 git("commit", "-qm", "change readme");
 const C3 = git("rev-parse", "HEAD");
+
+// C4: on a separate branch off C1, change only the ai-dev-weekly skill (drift).
+git("checkout", "-qb", "ai-skill-change", C1);
+write(".claude/skills/ai-dev-weekly/SKILL.md", "ai skill v2 (changed)\n");
+git("add", "-A");
+git("commit", "-qm", "change ai skill");
+const C4 = git("rev-parse", "HEAD");
 
 function run(name, base, target, expectPass, mustContain) {
   let code = 0, out = "";
@@ -70,5 +78,6 @@ let allOk = true;
 allOk &= run("in-sync (same ref)", C1, C1, true);
 allOk &= run("drift on pipeline def", C1, C2, false, "seo-optimizer.md");
 allOk &= run("non-pipeline change ignored", C1, C3, true);
+allOk &= run("drift on ai-dev-weekly skill", C1, C4, false, "ai-dev-weekly/SKILL.md");
 fs.rmSync(repo, { recursive: true, force: true });
 process.exit(allOk ? 0 : 1);

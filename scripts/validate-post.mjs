@@ -5,7 +5,7 @@
  * referenced local images. Exits 0 on success, 1 with readable errors on
  * failure.
  *
- * Usage: node scripts/validate-post.mjs content/blog/<slug>.mdx
+ * Usage: node scripts/validate-post.mjs content/blog/<slug>.mdx [--require-tag <tag>]
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,9 +24,24 @@ const MAX_DESCRIPTION_LENGTH = 139;
 const errors = [];
 const warnings = [];
 
-const fileArg = process.argv[2];
+const USAGE =
+  "Usage: node scripts/validate-post.mjs content/blog/<slug>.mdx [--require-tag <tag>]";
+let fileArg;
+let requiredTag = null;
+const cliArgs = process.argv.slice(2);
+for (let i = 0; i < cliArgs.length; i++) {
+  if (cliArgs[i] === "--require-tag") {
+    requiredTag = cliArgs[++i];
+    if (!requiredTag) {
+      console.error(`--require-tag needs a tag value. ${USAGE}`);
+      process.exit(1);
+    }
+  } else if (!fileArg) {
+    fileArg = cliArgs[i];
+  }
+}
 if (!fileArg) {
-  console.error("Usage: node scripts/validate-post.mjs content/blog/<slug>.mdx");
+  console.error(USAGE);
   process.exit(1);
 }
 
@@ -87,6 +102,14 @@ if (!Array.isArray(data.tags) || data.tags.length < 3 || data.tags.length > 6) {
       errors.push(`Tag must be a lowercase string: ${JSON.stringify(tag)}`);
     }
   }
+}
+
+// --- Required tag (opt-in). The ai-dev pipeline passes --require-tag ai so its
+// posts classify into the ai lane that `npm run stats:reach:ai` measures. ---
+if (requiredTag && !(Array.isArray(data.tags) && data.tags.includes(requiredTag))) {
+  errors.push(
+    `\`tags\` must include "${requiredTag}" (required by --require-tag), got: ${JSON.stringify(data.tags)}`
+  );
 }
 
 // --- Slug matches filename ---

@@ -31,6 +31,14 @@ into priors the `blog-researcher` reads on every run.
    `WORKING` = reach tuning is lifting the ceiling; `FALSIFIED` = the content
    tuning did not work, escalate per the design doc's fallback (disclose AI on
    Medium, or diversify to owned site + SEO + dev.to).
+7. Run `npm run stats:reach:ai` for the AI-for-developers pipeline (live since
+   2026-09-23; see `.claude/skills/ai-dev-weekly/SKILL.md`). It applies the same
+   thresholds to `ai`-lane posts dated on or after that day only. `FALSIFIED`
+   there means the theme change did not lift the ceiling either, so the next
+   lever is distribution, not more content tuning. It counts every ai-lane post
+   dated on or after that day (the tags ai, llm, agent, agents, mcp, prompt, and
+   workflow all map to that lane), so check whether any hand-written AI post
+   from that period is in the count before reading the verdict.
 
 ## Files
 
