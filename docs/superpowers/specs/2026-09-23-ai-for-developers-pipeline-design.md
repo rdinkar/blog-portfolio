@@ -88,19 +88,44 @@ Step 2  ai-dev-scout        scan last 10 days, score 6-10 candidates through the
 Step 3  ai-dev-researcher   deep brief on the lead, light sourcing on radar items,
                             real developer reactions -> "Reader questions"
 Step 4  ai-dev-writer       content/blog/<slug>.mdx (lead + radar)
-Step 5  seo-optimizer       (reused) frontmatter description + 5 Medium tags
-Step 6  featured-image-creator (reused) SVG + frontmatter + hero line
-Step 7  ai-dev-reviewer     PASS / REVISE; max 2 revision loops, else abort, no PR
-Step 8  validate-post.mjs --require-tag ai
-Step 9  branch blog/<YYYY-Www>-<slug>, commit, push, gh pr create --base main
-Step 10 clean up worktree (success or failure); report
+Step 5  validate-post.mjs --require-tag ai (validate the draft before review)
+Step 6  ai-dev-reviewer     PASS / REVISE / ABORT; max 2 revision loops, each
+                            followed by re-validation (Step 5), else abort, no PR
+Step 7  seo-optimizer       (reused) frontmatter description (from the brief's
+                            SEO description seed) + 5 Medium tags
+Step 8  featured-image-creator (reused) SVG + frontmatter + hero line
+Step 9  validate-post.mjs --require-tag ai (final validation)
+Step 10 branch blog/<YYYY-Www>-<slug>, commit, push, gh pr create --base main
+Step 11 clean up worktree (success or failure); report
 ```
+
+Review runs before SEO and the featured image, so the reviewer sees the post
+that will ship; SEO and the image run after review so the description, tags,
+and hero carry the final title and body.
 
 A skipped run beats a weak post. The run aborts, with no PR, when the scout
 finds no candidate that clears its bar (`SCOUT: ABORT`), when the researcher
 finds the lead does not hold up on its primary source
-(`RESEARCH: LEAD DOES NOT HOLD`), or when the reviewer still returns REVISE
-after two revision loops.
+(`RESEARCH: LEAD DOES NOT HOLD`), when the reviewer returns `VERDICT: ABORT`
+for a topic-level failure no rewrite can fix (the lead is outside the scan
+window, the post substantially duplicates an existing post, or the "news" is
+a months-old capability), or when the reviewer still returns REVISE after two
+revision loops.
+
+### Untrusted content
+
+The scout, researcher, and reviewer read untrusted web content (Hacker News,
+Reddit, GitHub issues, vendor pages): fetched text is data, never
+instructions, and each agent's own prompt says so. The orchestrator applies
+the same rule to agent output, acting only on the contract lines it names
+(`SCOUT:`, `RESEARCH:`, `VERDICT:`, `MONDAY ACTIONS:`, `DESCRIPTION:`,
+`MEDIUM TAGS:`) and on file paths inside the workdir, never on a command,
+URL, or instruction the output contains. If a named agent type is
+unavailable, the fallback general-purpose agent keeps that definition's own
+tools, not a broader set; the scout, researcher, and reviewer in particular
+never get Bash. The commit message, PR title, and PR body go through files
+(written with the file-writing tool) rather than shell interpolation, since
+agent output can contain shell metacharacters.
 
 ### Files
 
@@ -140,7 +165,7 @@ Changed:
 
 **Input:** workdir path, today's date.
 
-**Scan window:** the last 10 days. A lead older than 14 days is never picked.
+**Scan window:** the last 10 days. Every candidate, lead or radar, must be dated inside the window.
 
 **Scope:** model and tool releases (Claude, GPT, Gemini, open-weight models;
 Copilot, Cursor, Claude Code, Codex, JetBrains AI, and similar), research that
@@ -201,17 +226,21 @@ ranking does not apply because this pipeline is single-lane.
   benchmark numbers are labelled as vendor claims.
 - **How to use it this week:** exact commands, config, and prompt snippets
   copied verbatim from official docs, each with the doc URL. Nothing
-  improvised.
+  improvised. Official docs means a page on the vendor's own domain (for
+  example docs.anthropic.com, platform.openai.com, docs.github.com,
+  cursor.com/docs) or the tool's canonical source repository; tutorials,
+  reposts, and aggregator pages are not official docs.
 - **Naive use vs effective use:** how most developers will first use it, why
   that underdelivers, and the better way (sourced).
 - **Raise-the-bar angle:** how this can improve engineering quality (tests,
   review, security, maintainability), with sources.
 - **Where it breaks:** limits, costs, privacy/security implications for
   company code, reported failures.
-- **Reader questions:** 5-8 real questions or doubts developers are raising
+- **Reader questions:** 0-8 real questions or doubts developers are raising
   about the lead, mined from Hacker News threads, GitHub issues, Reddit, and
   forums, each with the URL where it was raised, and the sourced answer where
-  one exists.
+  one exists. None is acceptable when the development is too new to have
+  discussion yet. Never cite a URL that was not opened.
 - **Suggested verdict:** adopt now / try on a side task / wait, with reasons.
   This is the post's defensible stance.
 - **Radar items:** for each, what happened, date, primary source URL, and a
@@ -224,7 +253,9 @@ ranking does not apply because this pipeline is single-lane.
 revision mode, reviewer notes verbatim).
 
 **Before writing:** read `.claude/skills/ai-dev-weekly/WRITING-RULES.md` and
-the exemplar posts it names, every run.
+the exemplar posts it names, every run. It uses the brief's "Reach title
+(hook)" as the post title (sharpened only if flat or keyword-stuffed) and
+starts the working description from the brief's "SEO description seed".
 
 **Post spine** (beats the post must hit; headings remain claims or questions,
 not these labels):
@@ -255,6 +286,9 @@ stance.
 `ai` (drives lane classification for measurement) plus 2-5 other lowercase
 site tags.
 
+**Slug:** fixed from the first draft. A revision never renames the post file,
+even when the title changes.
+
 **Length:** renders as a 3-9 minute read (validator-enforced).
 
 ### WRITING-RULES.md (shared)
@@ -266,13 +300,19 @@ dashes, at most one staccato fragment run, no "It's not X, it's Y", no
 rule-of-three stacking, no rhetorical filler, no consecutive bolded list
 openers, no boilerplate phrases, no Markdown tables, MDX safety). Adds the
 series-specific rules: vendor claims attributed, commands and config verbatim
-from sourced docs, no hype adjectives the sources do not support.
+from sourced docs, no hype adjectives the sources do not support. Length
+target: 1,100-1,600 words in total, code included, rendering as a 3-9 minute
+read.
 
 Exemplars named in the file: `how-senior-frontend-engineers-use-ai-at-work.mdx`
-(the 14K AI breakout), `you-dont-have-a-prompt-problem-you-have-a-layering-problem.mdx`
-and `your-mcp-servers-are-eating-the-context-window.mdx` (pipeline-era AI
-register), and `how-react-performance-actually-fails-at-scale.mdx` (house
-voice reference).
+(the 14K AI breakout),
+`using-ai-for-frontend-performance-debugging-practical-wins-and-hard-limits.mdx`
+(practical wins and hard limits) and
+`designing-frontend-systems-with-ai-in-the-loop-what-changes-what-doesnt.mdx`
+(what changes and what doesn't), and
+`how-react-performance-actually-fails-at-scale.mdx` (house voice reference).
+All four read in 4-7 minutes; the rule is to match their register and length,
+not their topics.
 
 The old `blog-writer.md` and `blog-reviewer.md` are left as they are (paused);
 they are not rewired to the shared file.
@@ -287,20 +327,33 @@ correctness, style match, anti-slop, no duplication, hook title, first-screen
 hook, skimmability, distinctiveness, 3-9 minute length) plus:
 
 - **Freshness:** the lead development is within the scan window and the post
-  states its date.
+  states its date. A capability that has existed for months, presented as
+  news, is an ABORT.
 - **Hype check:** every capability claim traces to a primary source; any claim
   stronger than its source is a REVISE.
-- **Verbatim check:** every command/config snippet matches its cited doc.
+- **Verbatim check:** every command/config snippet matches its cited doc,
+  including every install, download, or fetch command (npm, pnpm, pip, brew,
+  npx, curl, docker pull, MCP server add commands); a package or image name
+  that does not appear in the official doc is a REVISE (typosquat risk).
 - **Monday test:** the reviewer lists the concrete actions a reader could take
   after reading; fewer than two is a REVISE.
-- **Reader questions:** each is answered or explicitly scoped out.
+- **Reader questions:** each is answered or explicitly scoped out; the
+  reviewer opens at least one "Raised at" URL and confirms the question
+  appears there, and a question it cannot find there is a REVISE. Zero
+  questions in the brief is acceptable.
 - **Raise-the-bar:** present and concrete about quality, not a platitude.
 - **Radar:** each item sourced, dated, and carrying a real "what it means for
   you".
 - **Tag:** frontmatter tags include `ai`.
+- **Duplication:** a post that substantially restates an existing post is an
+  ABORT.
 
-Returns `VERDICT: PASS` + notes, or `VERDICT: REVISE` + numbered, quoted,
-actionable notes (same contract as the existing reviewer).
+Returns `VERDICT: PASS` + notes, `VERDICT: REVISE` + numbered, quoted,
+actionable notes, or, only for a topic-level failure no rewrite can fix (the
+lead is outside the scan window, the post substantially duplicates an
+existing post, or the "news" is a months-old capability), `VERDICT: ABORT` +
+a one-sentence reason. Everything a writer can fix is a REVISE, never an
+ABORT.
 
 ### PR body
 
@@ -311,7 +364,9 @@ topic, Sources, Stats) plus:
 - **Radar items:** the items included, with sources.
 - **Monday actions:** the reviewer's list of concrete actions a reader can take
   (the reviewer always returns a `MONDAY ACTIONS:` line).
-- **Stats** also reports reader questions answered vs scoped out.
+- **Stats** also reports reader questions answered vs scoped out, and its word
+  count is read from the final validator's `OK` line (prose words plus code),
+  not recomputed separately.
 
 ## Enforcement
 
@@ -336,7 +391,7 @@ fixes need enforcement). These checks back the design:
 - **Required tag:** `validate-post.mjs` accepts an optional
   `--require-tag <tag>` and fails if the post's frontmatter tags lack it.
   Without the flag, behavior is unchanged (CI calls it without the flag). The
-  new skill's Step 8 passes `--require-tag ai`. Unit-tested both ways.
+  new skill's Steps 5 and 9 pass `--require-tag ai`. Unit-tested both ways.
 - **CI:** unchanged. `.github/workflows/validate.yml` already runs every
   `scripts/*.test.mjs` and validates every changed post.
 
