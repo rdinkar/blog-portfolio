@@ -80,7 +80,8 @@ Rejected alternatives:
 ## Architecture
 
 ```
-Step 0  Preflight: git fetch origin main; node scripts/check-pipeline-fresh.mjs
+Step 0  Preflight: git fetch origin main; check-pipeline-fresh.mjs;
+        check-pipeline-objective.mjs
 Step 1  Temp worktree off origin/main (+ node_modules symlink)
 Step 2  ai-dev-scout        scan last 10 days, score 6-10 candidates through the
                             reader lens, pick 1 lead + 2-3 radar items (or abort)
@@ -96,8 +97,10 @@ Step 10 clean up worktree (success or failure); report
 ```
 
 A skipped run beats a weak post. The run aborts, with no PR, when the scout
-finds no candidate that clears its bar, or when the reviewer still returns
-REVISE after two revision loops.
+finds no candidate that clears its bar (`SCOUT: ABORT`), when the researcher
+finds the lead does not hold up on its primary source
+(`RESEARCH: LEAD DOES NOT HOLD`), or when the reviewer still returns REVISE
+after two revision loops.
 
 ### Files
 
@@ -112,7 +115,7 @@ New:
 - `.claude/agents/ai-dev-writer.md`: tools `Read, Write, Edit, Glob, Grep`.
 - `.claude/agents/ai-dev-reviewer.md`: tools `Read, WebSearch, WebFetch, Glob, Grep`.
 
-Every new agent file and the new skill carry the
+Every new agent file, the new skill, and `WRITING-RULES.md` carry the
 `<!-- pipeline-objective: reach -->` marker.
 
 Changed:
@@ -122,8 +125,10 @@ Changed:
   explicitly asked for a frontend post), so the two skills do not compete for
   "generate a blog post" requests.
 - `scripts/check-pipeline-fresh.mjs` (+ test): watch `.claude/skills/ai-dev-weekly`.
-- `scripts/check-pipeline-objective.mjs` (+ test): add the 5 new prompt files
-  to `FILES`; add a rules-reference check (below).
+- `scripts/check-pipeline-objective.mjs` (+ test): add the 6 new prompt files
+  to `FILES`; add a rules-reference check and a real-repo audit (below).
+- `.claude/skills/weekly-blog-pipeline/FEEDBACK-LOOP.md`: mention
+  `npm run stats:reach:ai` in the monthly routine.
 - `scripts/check-reach-trend.mjs` (+ test): `--lane` and `--since` options.
 - `scripts/validate-post.mjs` (+ test): optional `--require-tag <tag>`.
 - `package.json`: `stats:reach:ai` script; `stats:update` also prints the AI
@@ -235,7 +240,10 @@ not these labels):
 5. **Raise the bar:** how to use the development to do better engineering, not
    just faster engineering.
 6. **Where it breaks:** limits, costs, risks, known failure reports.
-7. **On the radar:** the scout's radar items (target 2-3; omitted entirely if
+7. **The verdict:** the lead closes on the brief's verdict (adopt now / try on
+   a side task / wait) and the one thing to do this week. This is the post's
+   real ending, never a summary.
+8. **On the radar:** the scout's radar items (target 2-3; omitted entirely if
    none qualified), each 2-3 sentences: what happened, what it means for you,
    source link.
 
@@ -301,6 +309,9 @@ topic, Sources, Stats) plus:
 
 - **Shortlist considered:** the scout's scored candidates, as a bulleted list.
 - **Radar items:** the items included, with sources.
+- **Monday actions:** the reviewer's list of concrete actions a reader can take
+  (the reviewer always returns a `MONDAY ACTIONS:` line).
+- **Stats** also reports reader questions answered vs scoped out.
 
 ## Enforcement
 
@@ -311,9 +322,13 @@ fixes need enforcement). These checks back the design:
   `.claude/skills/ai-dev-weekly` to `PIPELINE_PATHS` (new agents are already
   covered by `.claude/agents`). Test asserts a change under the new skill dir
   is detected.
-- **Objective tripwire:** `check-pipeline-objective.mjs` adds the 4 new agents
-  and the new skill to `FILES`, so the reach marker and dead-phrase checks
-  apply to them.
+- **Objective tripwire:** `check-pipeline-objective.mjs` adds the 4 new agents,
+  the new skill, and `WRITING-RULES.md` to `FILES`, so the reach marker and
+  dead-phrase checks apply to them. Today nothing runs the real-repo audit
+  automatically (CI runs only its unit test, and neither skill calls it), so
+  the audit is exported as `auditRepo(repoRoot)` and the unit test asserts the
+  real repo passes. That puts the tripwire in CI. The new skill's preflight
+  also runs `node scripts/check-pipeline-objective.mjs`.
 - **Rules-reference check:** the same script asserts
   `.claude/skills/ai-dev-weekly/WRITING-RULES.md` exists and that
   `ai-dev-writer.md` and `ai-dev-reviewer.md` both reference it by path.
