@@ -1,10 +1,12 @@
 ---
 name: weekly-blog-pipeline
-description: Orchestrates the blog-writing pipeline - researcher, writer, SEO, featured image, and reviewer agents - producing a draft post PR each run. Use when running the weekly blog routine or when asked to generate a blog post.
+description: PAUSED since 2026-09-23 (superseded by ai-dev-weekly). Orchestrates the frontend blog pipeline (researcher, writer, SEO, featured image, reviewer), producing a draft post PR. Use only when explicitly asked for a frontend post.
 ---
 <!-- pipeline-objective: reach -->
 
 # Weekly Blog Pipeline
+
+> **Paused since 2026-09-23.** The weekly slot now runs [ai-dev-weekly](../ai-dev-weekly/SKILL.md), and this pipeline's scheduled task is disabled. Run it only when explicitly asked for a frontend post. Design: `docs/superpowers/specs/2026-09-23-ai-for-developers-pipeline-design.md`.
 
 Produce a new blog post as a **pull request** against `main` of `github.com/rdinkar/blog-portfolio`. Never push to main. A skipped run is better than a weak post.
 
