@@ -1,0 +1,202 @@
+---
+title: "The Cmd+K Command Palette: The Machine Coding Round Hiding Behind Linear, Vercel, and Raycast"
+description: "Cmd+K command palette in React: the ARIA combobox with aria-activedescendant, subsequence fuzzy search, and focus trap"
+date: "2026-09-16"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/cmd-k-command-palette-machine-coding-round.svg"
+tags:
+  - machine-coding
+  - react
+  - interviews
+  - accessibility
+  - frontend
+---
+
+![The Cmd+K Command Palette: The Machine Coding Round Hiding Behind Linear, Vercel, and Raycast](/blog-images/cmd-k-command-palette-machine-coding-round.svg)
+
+You get the prompt: build a Cmd+K command palette, the kind Linear and Raycast and Vercel all ship. You have maybe 75 minutes. You render an input, filter a list of commands, wire up an Enter handler, and it works. The interviewer nods, then reaches for the keyboard instead of the mouse, presses the down arrow, and asks a screen reader to read the highlighted row.
+
+That is where most candidates lose the round. The filtered list was never the hard part. What you are actually graded on are four things a mouse never exposes: a global shortcut that does not leak a listener on every render, subsequence matching instead of substring, the combobox virtual-focus contract where arrow keys move a pointer and not DOM focus, and a focus trap that returns focus to wherever the user was when it closes. By the end of this post you will be able to build each one and say out loud why it exists, which is the part that reads as senior.
+
+A machine coding round is a live build in a fixed window, usually 60 to 90 minutes. The palette earns its spot because it looks tiny: global shortcut, command data, fuzzy filter, autofocus. Every one of those words hides a trap.
+
+## Why the global shortcut is the first thing that breaks
+
+You need Cmd+K on Mac and Ctrl+K on Windows to open the palette from anywhere on the page. The instinct is to reach for `useEffect` and add a `keydown` listener. Here is the version that looks fine and quietly leaks.
+
+```jsx
+function CommandPalette() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        setOpen(true);
+      }
+    });
+  }); // no dependency array, no cleanup
+
+  // ...
+}
+```
+
+Two bugs, both interview traps. There is no cleanup and no dependency array, so every render attaches another listener and it re-runs on every render. Type into any field that changes state and you are stacking `keydown` handlers until the tab gets heavy. The follow-up the interviewer is waiting for is literally "how do you prevent duplicate listeners across re-renders?" It also forgot `preventDefault`, so Cmd+K may still trigger a browser shortcut underneath you.
+
+Pull it into a hook with one stable listener and a real cleanup.
+
+```jsx
+function useCommandPalette() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault(); // don't let the browser also handle it
+        setOpen((prev) => !prev);
+      }
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []); // attach once, tear down on unmount
+
+  return { open, setOpen };
+}
+```
+
+Empty dependency array, named handler, cleanup that removes the exact function you added. One edge to say out loud while you type it: if the user is inside an input or textarea, a bare `k` should type a `k`, and only the explicit Cmd+K should open the palette. The `metaKey || ctrlKey` guard already covers that, but the naive handlers that key off `e.key === "k"` alone will hijack every letter someone types.
+
+## Subsequence matching, not substring, is the whole trick
+
+Here is the filter most people write first, and why it feels wrong the moment you use it.
+
+```jsx
+const filtered = commands.filter((c) =>
+  c.label.toLowerCase().includes(query.toLowerCase())
+);
+```
+
+Substring matching means the query has to appear as one contiguous run. Type `tgldk` and you get nothing, because no command contains those five letters in a row. But a good palette knows you meant "Toggle dark mode." That is subsequence matching: the query's characters appear in order, not necessarily adjacent.
+
+The minimum viable version is a two-pointer walk.
+
+```jsx
+function isSubsequence(query, text) {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+```
+
+That gets you matching, but not ranking, and ranking is what makes a palette feel smart. "Toggle dark mode" and "Trigger global lookup, delete key" might both match `tgldk`, and you want the obvious one first. So return a score instead of a boolean: reward a prefix match, a word-boundary match, and contiguous runs, add those bonuses as you walk the same two pointers, then sort the survivors descending. That is roughly the shape of `command-score`, the library cmdk uses under the hood, tuned for the "user types a prefix or an in-order substring" pattern. If asked about alternatives, name Fuse.js (weighted multi-field matching) and uFuzzy (built for latency on large lists), then say the palette-specific scorer wins because it rewards exactly how people use a palette.
+
+Give each command a `keywords` array and score against label and keywords together, so typing "theme" surfaces "Toggle dark mode" even though the word never appears in the label. Keep one budget in mind: cmdk filters even 1000 commands in under 5ms, and the palette should appear in under 100ms. The antipattern is a scorer that blocks the main thread on every keystroke, but at a few hundred commands a plain synchronous sort is nowhere near that budget, so do not reach for a web worker until someone hands you tens of thousands of items.
+
+## The combobox contract: arrow keys move a pointer, not focus
+
+This is the section that decides senior versus mid. A command palette is not a bespoke widget. It is the ARIA combobox pattern: a text input with a listbox popup, where the input keeps DOM focus the entire time and an `aria-activedescendant` attribute points at the highlighted row. Arrow keys move that pointer. They do not move focus.
+
+Here is the wrong version, and it is wrong in the way almost everyone writes it the first time.
+
+```jsx
+// WRONG: moving real DOM focus into the list
+function onArrowDown() {
+  const next = document.querySelector(`#option-${activeIndex + 1}`);
+  next?.focus(); // focus just left the input
+}
+```
+
+The moment focus lands on a list item, the input loses it, and the user can no longer type to refine the query without arrowing back up. Worse, screen reader announcements get chaotic because focus events fire on every row. The intuitive move is the broken one.
+
+The correct model keeps focus nailed to the input and tracks the highlight virtually.
+
+```jsx
+function CommandList({ results, query, onSelect }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeId = results[activeIndex] ? `cmd-${results[activeIndex].id}` : undefined;
+
+  function onKeyDown(e) {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setActiveIndex((i) => (i + 1) % results.length);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setActiveIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        onSelect(results[activeIndex]);
+        break;
+    }
+  }
+
+  return (
+    <div>
+      <input
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="command-listbox"
+        aria-autocomplete="list"
+        aria-activedescendant={activeId}
+        value={query}
+        onKeyDown={onKeyDown}
+        autoFocus
+      />
+      <ul role="listbox" id="command-listbox">
+        {results.map((cmd, i) => (
+          <li
+            key={cmd.id}
+            id={`cmd-${cmd.id}`}
+            role="option"
+            aria-selected={i === activeIndex}
+            onMouseDown={() => onSelect(cmd)}
+          >
+            {cmd.label}
+          </li>
+        ))}
+      </ul>
+      <span role="status" aria-live="polite" className="sr-only">
+        {results.length} results
+      </span>
+    </div>
+  );
+}
+```
+
+Name each attribute out loud, because that is the credit. The input carries `role="combobox"`, `aria-expanded`, `aria-controls` pointing at the listbox id, `aria-autocomplete="list"`, and the moving `aria-activedescendant` holding the highlighted option's id. The popup is `role="listbox"`, each row a `role="option"` with `aria-selected` on the active one, and the `aria-live="polite"` region announces the result count a screen reader user would otherwise never hear. Two more from the spec: Escape closes the popup and returns focus to the combobox, and `onMouseDown` rather than `onClick` on the options avoids the blur-fires-first bug where the popup closes before the click registers.
+
+## "Just use a library" is not a substitute for understanding this
+
+Someone always says it: why not reach for cmdk? It is a fair question. cmdk is the de-facto React command menu, at version 1.1.1 with roughly 36 to 42 million weekly downloads and over 3,600 dependents. Most days, in real product work, you should use it.
+
+But an interview is testing whether you understand the pattern, and the pattern is easy to get wrong even for the people who wrote the library. In cmdk 1.1.1, `Command.Input` never exposes a usable `aria-activedescendant`: it is absent at a pristine mount, and once set it goes stale after the filter changes. A stale activedescendant means a screen reader user hears the wrong row, or none at all. That is exactly the contract this whole section is about, shipped broken in the most-used implementation of it. If you cannot explain what `aria-activedescendant` should point at and when it should update, you cannot tell whether your library dependency is lying to your users. That is the stance I would defend across the table: reaching for cmdk is the right production call and the wrong interview answer, because the round is checking the understanding the library is supposed to spare you.
+
+## The follow-ups that separate a build from a demo
+
+With 20 minutes left, a good interviewer escalates, and each move compounds on the model you already have. Grouping is a bucket-by-`category` over the sorted results with a single flat `activeIndex` so arrow navigation still crosses group boundaries. Contextual commands are a filter: drop anything that does not apply to the current route before scoring. Async commands debounce around 200ms and cancel stale requests with an `AbortController`, exactly as in the autocomplete/typeahead round.
+
+Then the focus trap, which is non-negotiable for a modal surface. Trap Tab inside the palette while it is open so keyboard users cannot tab into the page behind it, and on close send focus back to the element that triggered the open. Capture `document.activeElement` when you open, and restore it in the cleanup.
+
+```jsx
+useEffect(() => {
+  if (!open) return;
+  const trigger = document.activeElement;
+  return () => trigger?.focus?.(); // return focus on close
+}, [open]);
+```
+
+Mobile has no Cmd key, so trigger it from a search button and render a slide-up sheet with the input anchored above the on-screen keyboard, a layout change rather than a rewrite.
+
+## What the person across the table is really checking
+
+Anyone can render a filtered list. The palette is on the interview roster precisely because the list is a decoy for the keyboard and accessibility model underneath it.
+
+So if the clock is short and you have a working mouse-driven menu, do not style it. Wire the `aria-activedescendant` so the arrow keys announce correctly, and add the return-focus on close. Those two are what the interviewer keeps their eyes on, and they are what most candidates run out of time before they reach.
