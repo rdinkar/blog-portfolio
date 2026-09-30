@@ -1,0 +1,230 @@
+---
+title: "You've Faked the Select Dropdown for 20 Years. The Browser Just Made It Real."
+description: "appearance: base-select, ::picker(select), and selectedcontent let you fully style a native select dropdown and drop react-select"
+date: "2026-09-09"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/youve-faked-the-select-dropdown-for-20-years-the-browser-just-made-it-real.svg"
+tags:
+  - html
+  - css
+  - forms
+  - browser
+  - accessibility
+---
+
+![You've Faked the Select Dropdown for 20 Years. The Browser Just Made It Real.](/blog-images/youve-faked-the-select-dropdown-for-20-years-the-browser-just-made-it-real.svg)
+
+You reached for react-select because of one CSS rule that never existed. You could not style an `<option>`. Not its padding, not an icon inside it, not the panel it lived in. So every design system in the world shipped a JavaScript widget to fake a control the browser already had.
+
+That constraint is gone. You can now style the real native `<select>`, its dropdown panel, and the content of every option, with plain CSS and HTML. By the end of this post you'll have a country picker with flag icons, a fully animated panel, and a progressive-enhancement wrapper you can ship this week, all of it a single native form control with zero library code.
+
+## The library you installed was a workaround for a missing pseudo-element
+
+Look at why react-select exists. It ships roughly 150 KB and pulls around 8 million weekly npm downloads. Downshift, the headless alternative, adds another 2 million or so. That is an enormous amount of the ecosystem's weight spent rebuilding one thing: a box you click that opens a panel of styled rows.
+
+None of that code exists because dropdowns are conceptually hard. It exists because `<option>` was a black box. You could not put a flag next to a country name, so you threw the native element away, rebuilt the open/close state machine, the keyboard handling, the focus management, and the ARIA wiring in JavaScript, and then spent the next two years fighting the z-index and `overflow: hidden` bugs your fake panel introduced inside scroll containers.
+
+The browser just handed all of that back. `appearance: base-select` opts a `<select>` into a new, fully styleable rendering while keeping it a genuine form control. It shipped in Chrome and Edge 135, and as of 2026 Safari 27 brings it to a second engine, announced at WWDC. Firefox is still prototyping behind a flag. Two engines is the line where this stops being a demo and starts being progressive enhancement worth writing.
+
+## The opt-in nobody gets right on the first try
+
+Here is the mistake everyone makes. They style the select, see nothing change on the panel, and assume the feature is broken.
+
+```css
+/* Looks right. The dropdown panel ignores every rule below. */
+select {
+  appearance: base-select;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+```
+
+`appearance: base-select` has to be set in two places. Once on the `select` itself, and once on the `::picker(select)` pseudo-element that represents the panel. Set it on only the control and the panel stays in the browser's legacy rendering, which is exactly the "why isn't this working" moment.
+
+```css
+select,
+::picker(select) {
+  appearance: base-select;
+}
+
+::picker(select) {
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 8px 24px rgb(16 24 40 / 0.12);
+}
+```
+
+Once both are opted in, the markup changes too. You provide an explicit `<button>` as the first child of the `<select>`. That button replaces the default control rendering and is `inert` by default, so it never becomes a separate tab stop. Inside it you drop a `<selectedcontent>` element, and the browser keeps it in sync with the chosen option by cloning that option's content with `cloneNode()` under the hood.
+
+```html
+<select name="country">
+  <button>
+    <selectedcontent></selectedcontent>
+  </button>
+
+  <option value="in">
+    <img src="/flags/in.svg" alt="" aria-hidden="true" class="flag" />
+    India
+  </option>
+  <option value="jp">
+    <img src="/flags/jp.svg" alt="" aria-hidden="true" class="flag" />
+    Japan
+  </option>
+</select>
+```
+
+That is the classic react-select use case, the country picker with flags, built as one native element. The `<option>` now holds real HTML, so you can `display: flex` it, give it padding, and align an icon. The icons carry `aria-hidden="true"` because the option's text already announces the country; without it a screen reader reads the flag twice.
+
+## Why the selected content clones more than you want
+
+Rich options open one small trap worth knowing. The flag looks great in the list, but `<selectedcontent>` clones the whole option into the button, flag and all, which sometimes crowds the closed control. You style it away with a scoped rule instead of changing the markup.
+
+```css
+option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+option .flag {
+  width: 20px;
+  height: 14px;
+}
+
+/* Show the flag in the list, hide it in the closed button */
+selectedcontent .flag {
+  display: none;
+}
+```
+
+Only `<option>` and `<optgroup>` render as selectable items in the picker, so you cannot smuggle arbitrary layout rows in between. That constraint is deliberate. It is also the reason this stays a real form control instead of the free-form div soup a JS library gives you.
+
+## A picker that animates, positioned by the browser
+
+The panel is promoted to the top layer when it opens, the same mechanism dialogs and popovers use. That single fact kills the oldest hand-rolled-dropdown bug in existence: it escapes `overflow: hidden` and every z-index stacking context, so it will not get clipped inside a scrollable card or buried under a sticky header.
+
+Positioning comes from anchor positioning, which the picker uses implicitly. The panel has an implicit anchor reference to the select button, so you place it with `anchor()` and no measuring loop.
+
+```css
+::picker(select) {
+  top: calc(anchor(bottom) + 4px);
+  left: anchor(left);
+}
+```
+
+Animation uses `@starting-style` and a transition that allows discrete properties, because the panel goes from `display: none` to shown.
+
+```css
+::picker(select) {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: all 0.25s allow-discrete;
+}
+
+/* State when the picker is open */
+select:open::picker(select) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Entry values the animation starts from */
+@starting-style {
+  select:open::picker(select) {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+```
+
+The dropdown arrow is a pseudo-element too. `select::picker-icon` targets it, and you can spin it on open with one rule.
+
+```css
+select::picker-icon {
+  transition: rotate 0.2s;
+}
+
+select:open::picker-icon {
+  rotate: 180deg;
+}
+```
+
+None of this is JavaScript. The open state, the top-layer promotion, and the anchor math are the browser's job now.
+
+## The status select, and the accessibility detail that bites
+
+A priority or status select is where the last two pseudo-elements earn their place. You want a colored dot per status and a visible marker on the current choice.
+
+```html
+<select name="priority">
+  <button><selectedcontent></selectedcontent></button>
+
+  <option value="high">
+    <span class="dot dot-high" aria-hidden="true"></span> High
+  </option>
+  <option value="med">
+    <span class="dot dot-med" aria-hidden="true"></span> Medium
+  </option>
+  <option value="low">
+    <span class="dot dot-low" aria-hidden="true"></span> Low
+  </option>
+</select>
+```
+
+```css
+option:checked {
+  background: #f2f4f7;
+  font-weight: 600;
+}
+
+/* The tick on the selected row. Not in the accessibility tree. */
+option::checkmark {
+  content: "\2713";
+  margin-left: auto;
+  color: #444;
+}
+```
+
+Now the detail that trips people up. In a customizable select, selection does not follow keyboard focus. When the panel is open and you arrow through options, focus moves but nothing is selected until you press Enter. Escape cancels and restores the previous value. That is correct native behavior, and it is exactly why `::checkmark` matters: the visible tick is the only thing telling a sighted keyboard user which row is actually chosen versus merely focused. The checkmark is decorative and stays out of the accessibility tree because the platform already announces selection state through the control itself.
+
+You get the rest of the keyboard contract for free. Closed, Space and the arrow keys open the panel. Open, arrows navigate, Enter confirms, Escape cancels. You are not rebuilding `role="combobox"`, `aria-activedescendant`, or an `aria-live` region the way you would for a hand-rolled async typeahead. The platform owns it.
+
+## Ship it as enhancement, not a rewrite
+
+This is the part that makes it safe today. The fallback is graceful by construction. A browser that does not understand the feature ignores the `<button>` and `<selectedcontent>` structure, strips the non-text content out of your options, and renders a plain, correct native `<select>`. Firefox users get a working control, just without the flags and animation.
+
+So gate the enhancement and let the base case be the boring native element.
+
+```css
+select,
+::picker(select) {
+  appearance: base-select;
+}
+
+@supports (appearance: base-select) {
+  ::picker(select) {
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgb(16 24 40 / 0.12);
+  }
+
+  option {
+    display: flex;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+}
+```
+
+Form participation never changes across that boundary. The submitted value is the selected option's trimmed `textContent`, and it is still a single native control that a `<form>` reads without a hidden input or an onChange bridge. There is no state to lift, no ref to forward, no controlled-versus-uncontrolled decision. That alone deletes a category of bugs react-select users file every week.
+
+## Where I'd still install the JavaScript
+
+I want to be honest about the boundary, because "delete your dependencies" makes a better headline than it makes an engineering rule.
+
+`appearance: base-select` gives you a styled, accessible, single-value dropdown. That is the common case, and for the common case you should stop reaching for react-select. The math is not close: a native element against 150 KB and a controlled-state contract, for a picker with icons and custom rows.
+
+But it does not give you a combobox. If you need to type to filter a long list, the native select has no text-entry affordance. If you need multi-select with chips, it does not do that. If your options load asynchronously from a search endpoint, you are back to a hand-built widget with `role="combobox"`, `aria-activedescendant`, and an `aria-live` region announcing result counts. Those are real controls with real complexity, and the native select was never going to replace them. Keep downshift or a headless combobox for exactly those jobs, and stop paying for it on the plain dropdown that makes up most of your forms.
+
+The default has flipped. For twenty years the safe choice was the library and the gamble was the platform. Now the gamble is shipping 150 KB to style a box you click. Style the real one, let it fall back to plain native where support is missing, and spend the bundle you saved on something a user can actually feel.
