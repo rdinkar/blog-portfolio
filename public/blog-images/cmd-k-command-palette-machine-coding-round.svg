@@ -1,0 +1,54 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="72%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#2d2d44" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1a1a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8b7cf6"/>
+      <stop offset="100%" stop-color="#6d5ce0"/>
+    </linearGradient>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0V34" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#1a1a2e"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Title -->
+  <text x="80" y="150" font-family="Inter, -apple-system, sans-serif" font-size="60" font-weight="800" fill="#f5f5f7" letter-spacing="-1">The Cmd+K</text>
+  <text x="80" y="222" font-family="Inter, -apple-system, sans-serif" font-size="60" font-weight="800" fill="#f5f5f7" letter-spacing="-1">command palette</text>
+  <text x="80" y="286" font-family="Inter, -apple-system, sans-serif" font-size="26" font-weight="500" fill="#8b7cf6" letter-spacing="0.5">A machine coding round in disguise</text>
+
+  <!-- Command palette window -->
+  <g transform="translate(80 340)">
+    <rect x="0" y="0" width="1040" height="228" rx="18" fill="#242437" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>
+
+    <!-- Search input row -->
+    <text x="34" y="58" font-family="Inter, -apple-system, sans-serif" font-size="26" fill="#6b6b85">Search commands</text>
+    <text x="238" y="58" font-family="Inter, -apple-system, sans-serif" font-size="26" fill="#f5f5f7">tgldk</text>
+    <rect x="312" y="34" width="2" height="30" fill="#8b7cf6"/>
+
+    <!-- Cmd+K key badges -->
+    <g font-family="Inter, -apple-system, sans-serif" font-size="20" font-weight="600" fill="#c9c9dd">
+      <rect x="900" y="26" width="58" height="40" rx="8" fill="#32324a"/>
+      <text x="929" y="52" text-anchor="middle">Cmd</text>
+      <rect x="968" y="26" width="40" height="40" rx="8" fill="#32324a"/>
+      <text x="988" y="52" text-anchor="middle">K</text>
+    </g>
+
+    <line x1="0" y1="90" x2="1040" y2="90" stroke="#ffffff" stroke-opacity="0.06" stroke-width="1"/>
+
+    <!-- Highlighted active row (aria-activedescendant) -->
+    <rect x="14" y="104" width="1012" height="48" rx="10" fill="url(#accent)" fill-opacity="0.18" stroke="#8b7cf6" stroke-opacity="0.5" stroke-width="1"/>
+    <circle cx="46" cy="128" r="5" fill="#8b7cf6"/>
+    <text x="70" y="136" font-family="Inter, -apple-system, sans-serif" font-size="23" fill="#f5f5f7">Toggle dark mode</text>
+    <text x="1010" y="136" text-anchor="end" font-family="Inter, -apple-system, sans-serif" font-size="17" fill="#8b7cf6">match: t g l d k</text>
+
+    <!-- Dimmed rows -->
+    <text x="70" y="188" font-family="Inter, -apple-system, sans-serif" font-size="23" fill="#5c5c74">Create new issue</text>
+    <circle cx="46" cy="180" r="5" fill="#3a3a52"/>
+  </g>
+</svg>
