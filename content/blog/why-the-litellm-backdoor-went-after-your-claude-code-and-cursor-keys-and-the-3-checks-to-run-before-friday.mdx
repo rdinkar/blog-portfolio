@@ -1,0 +1,147 @@
+---
+title: "Why the LiteLLM Backdoor Went After Your Claude Code and Cursor Keys, and the 3 Checks to Run Before Friday"
+description: "LiteLLM 1.107.0 PyPI backdoor: how cook.pth hunted Claude Code and Cursor keys, how to check exposure, and which 1.106.x to pin"
+date: "2026-10-28"
+author: "Rahul Dinkar"
+published: true
+image: "/blog-images/why-the-litellm-backdoor-went-after-your-claude-code-and-cursor-keys-and-the-3-checks-to-run-before-friday.svg"
+tags:
+  - ai
+  - security
+  - supply-chain
+  - python
+  - litellm
+---
+
+![Why the LiteLLM Backdoor Went After Your Claude Code and Cursor Keys, and the 3 Checks to Run Before Friday](/blog-images/why-the-litellm-backdoor-went-after-your-claude-code-and-cursor-keys-and-the-3-checks-to-run-before-friday.svg)
+
+On October 21, for about an hour and 43 minutes, an unpinned `pip install litellm` handed you a credential stealer. Most of us filed the headline under "Python gateway thing, not my problem." The payload disagreed. It went looking for the config files of Claude Code, Cursor, Copilot, Codex and a long list of other AI coding tools, by name.
+
+So the useful question is smaller than "was I hit?" Which of your hosts touched that build, and what are your AI tools holding that an attacker would want? Three checks answer both, and they fit before Friday.
+
+## What actually shipped on October 21?
+
+Seven wheels of `litellm==1.107.0` hit PyPI between 11:39:51 and 11:40:13 UTC on October 21, 2026, with Docker Hub and GHCR images following at 11:46:56 UTC, per LiteLLM's [attack-chain write-up](https://docs.litellm.ai/blog/security-incident-oct-21-2026-attack-chain). The bad Docker tags were `v1.107.0`, `latest`, `main-latest` and `main-stable`. The [incident post](https://docs.litellm.ai/blog/security-incident-oct-21-2026) puts Docker Hub's exposure at about 2 hours 33 minutes. Private enterprise release customers were unaffected, and the vendor says "All previous versions are safe."
+
+The mechanics matter more than the version. The release carried `cook.pth` and `sitecustomize.py`, which run every time Python starts in that environment, including when pip runs. Nobody had to `import litellm`. SafeDep's [analysis](https://safedep.io/litellm-pypi-compromise-credential-stealer-backdoor/) says the stealer encrypts and uploads its haul, while a detached daemon re-runs it and, every hour, fetches second-stage code from an attacker-chosen server.
+
+Besides AI tool configs, it took `~/.ssh/*`, cloud credentials, kubeconfig and the environment of every readable process. [StepSecurity](https://www.stepsecurity.io/blog/litellm-1-107-0-compromised-pypi-backdoored-wheels-credential-stealer) adds that with `DATABASE_URL` set, it took the provider keys in the LiteLLM proxy database, and counts about 49,000 PyPI downloads, a third-party figure that includes CI caches and mirrors.
+
+## How did a backdoor pass a two-person release gate?
+
+The vendor's canonical timeline:
+
+1. On 2026-05-27, an `opencode.json` holding the Agent Platform master key was committed to a public LiteLLM repo. The commit was force-pushed over. The key was never revoked.
+2. On 2026-10-10, the attacker used that key against the Agent Platform API, and one request returned a GitHub org owner's GitHub CLI OAuth token.
+3. With the owner's access, the attacker ran CI workflows on throwaway branches that posted repo secrets, including two other maintainers' tokens, to `webhook.site`.
+4. Any two engineers could approve a release, so two stolen tokens met the bar. The artifacts were built from a lookalike repo, `Berri-AI/litellm` (the real one is `BerriAI/litellm`).
+
+That's the "3 unique developer github credentials" HN found scary. Early theories put the first token's origin elsewhere, and on October 23 the vendor noted some earlier assumptions "were later discovered to be inaccurate or incomplete." Nothing in the canonical record says an AI coding agent leaked anything.
+
+It's also LiteLLM's second PyPI compromise this year. In March, [versions 1.82.7 and 1.82.8](https://advisories.gitlab.com/pypi/litellm/GHSA-5mg7-485q-xm76/) shipped credential-harvesting malware after a token leaked through an exploited Trivy dependency.
+
+## Who has to act, and who can skip half of this
+
+If `litellm` appears anywhere you run Python (lockfiles, base images, CI jobs, that one eval script), you need the exposure checks. If anything pulled a LiteLLM image by floating tag in the window, you're in scope even though nobody ran pip.
+
+If LiteLLM is nowhere in your stack, skip checks 1 and 2. Don't skip check 3, because the root cause was an AI tool config with a key in it plus an over-privileged personal token, and plenty of teams running agents have both.
+
+## The three checks to run before Friday
+
+Most developers will do this on their laptop:
+
+```
+pip show litellm
+```
+
+It prints 1.106.x and they close the tab. The vendor names this check, but alone it underdelivers. It says nothing about containers that pulled `latest`, or about CI runners. Running pip inside an affected environment re-runs the payload, so on an infected host the check makes things worse.
+
+The better order works outside-in, from a clean machine.
+
+### Check 1: search what you declared, not what you installed
+
+Grep lockfiles and image references for `1.107.0`, floating `latest` tags and unbounded `litellm>=` constraints. Compare image digests against the compromised index digest:
+
+```
+sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e
+```
+
+Cloudsleuth's [triage guide](https://cloudsleuth.io/blog/php2shell-litellm-gitlab-find-what-you-run/) agrees: investigate from a clean machine and pin images by digest. StepSecurity's post has ready-made `find`, `docker images --digests` and lockfile `grep` commands (third-party, not vendor guidance).
+
+### Check 2: treat any host that ran 1.107.0 as burned
+
+The vendor's site-packages indicators are `litellm-1.107.0.dist-info`, `cook.pth`, `cook.py`, `sitecustomize.py`, `__pycache__/cook*.pyc` and `sitecustomize*.pyc`, plus `/tmp/remote_code_loader.lock`. Finding them confirms the problem. Not finding them confirms nothing.
+
+If 1.107.0 was installed on a host with outbound internet, the vendor says assume exfiltration worked. Rebuild the image or virtualenv from scratch rather than cleaning in place, then rotate everything that host could reach: IAM role, provider keys in the proxy DB, master and virtual keys, the DB password, env secrets. Start from which identity the host ran as, because that identity is the blast radius.
+
+Then pin. On October 21 the vendor said "pin your version to 1.106.2 or any explicit version published prior to now":
+
+```
+litellm==1.106.2
+```
+
+PyPI has since listed stable releases 1.106.3, 1.106.4 and 1.106.5, and the vendor's [Oct 27 post](https://docs.litellm.ai/blog/litellm-private-registry) names 1.106.5 as the patched 1.106 release for an enterprise-license-only privilege escalation flaw. SafeDep calls the 1.107.0 release candidates clean, but the vendor hasn't, so leave them alone.
+
+Will an older line miss new models? The vendor keeps patching older lines (1.103.10, 1.104.8, 1.105.6, 1.106.5), but nobody has said whether model support is backported, so check the release notes.
+
+### Check 3: find where your AI tools keep secrets
+
+This one applies to everyone. SafeDep's analysis shows the stealer targeting AI coding tools by config path, from Claude Code and Cursor to Aider and Goose, and the whole chain began with an `opencode.json` in a public repo. Treat `opencode.json`, VS Code's `mcp.json`, Codex's `auth.json` and their cousins like `.env`: gitignore them, reference env vars instead of inline keys, and put them in secret-scanning scope.
+
+Then list where your personal tokens live across agent platforms, gateways and MCP configs. [GitHub's guidance](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) is to prefer fine-grained tokens, "choose the minimal permissions necessary," and set an expiration.
+
+## What this should change in your review process
+
+A force-push does not un-leak a key. LiteLLM's attack-chain post says the commit was force-pushed over, but "key revocation did not occur for the master key." So revoke any key that was ever public. If your secret-scanning runbook ends at "rewrote history," it ends too early.
+
+Approvals only count when they're independent. Someone on HN asked "What about adding a human in the loop?" LiteLLM had one, and two stolen tokens satisfied it. Its incident post says "The attacker had to compromise multiple independent security controls to be successful." Yet every one of those controls fell after a single leaked master key. Could one compromise in your org reach enough of your approvers' tokens to ship a release today?
+
+Then make the next bad release harder to install. A uv cooldown only installs releases once they're old enough. The [uv docs](https://docs.astral.sh/uv/reference/settings/) show:
+
+```toml
+[tool.uv]
+exclude-newer = "2006-12-02T02:07:43Z"
+```
+
+```toml
+[tool.uv]
+exclude-newer-package = { tqdm = "2022-04-04T00:00:00Z", markupsafe = false }
+```
+
+The docs example's fixed timestamp would freeze resolution at 2006. For a rolling cooldown, the same field takes a duration such as `1 week` or `P7D`.
+
+The HN thread asked whether package hosts offer a cooldown by default. Plan on it living in your client. pip's [`--uploaded-prior-to`](https://pip.pypa.io/en/stable/cli/pip_install/) takes a duration in days (its docs example is `P3D`) on indexes that publish upload times, and uv's `exclude-newer` does the same. To block one package outright, which a commenter said pip can't do, pip's documented answer is [hash-checking mode](https://pip.pypa.io/en/stable/topics/secure-installs/):
+
+```
+FooProject == 1.2 \
+  --hash=sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 \
+  --hash=sha256:486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7
+```
+
+`FooProject` and its hashes are pip's documentation example. Add digest-pinned images and you've covered the routes 1.107.0 took.
+
+## Where the cleanup and the hardening fall short
+
+Indicators can't give you a clean bill of health. SafeDep couldn't recover the second-stage server address, so hosts that ran the daemon early may have received code nobody has seen.
+
+Cooldowns delay security fixes too ("Are security updates immune?" came up in the thread). They aren't, but setting a package to `false` in `exclude-newer-package` exempts it, so you can fast-track a patch.
+
+Hash-checking is all-or-nothing. Every requirement and transitive dependency needs a hash and an `==` pin, so the first lockfile hurts.
+
+Could an LLM flag packages like this? One HN practitioner said yes, if diff heuristics pick the candidates, at the cost of "missing out novel attacks." That's opinion, not documented practice.
+
+LiteLLM's process changes are deferred to a later post, and early security fixes via its private registry are enterprise-only for now.
+
+## Verdict: run the checks today, ship the hardening this sprint
+
+Adopt now. The checks cost an afternoon. Skipping them means betting that no runner, image or laptop touched a build whose own vendor tells you to assume the worst. You can argue a cooldown is overkill for a team that pins exactly and reviews every lockfile diff. But a lockfile diff would have shown a plausible version bump, not a lookalike repo, and this is the same package's second compromise in seven months.
+
+This week, open every AI tool config on your machine and read it the way the stealer would. If you find an owner-scoped token in there, you've found your real exposure, whether or not LiteLLM was ever installed.
+
+## Your agent tools tightened their permissions this week
+
+GitHub Copilot's assisted permissions went GA on October 26: an LLM classifies each command, path or URL request, auto-runs the "clearly safe" ones and asks about the rest. The [changelog](https://github.blog/changelog/2026-10-26-github-copilot-assisted-permissions-generally-available) doesn't say Assisted is the default, so check which mode your sessions start in before pointing it at company repos.
+
+Claude Code 2.1.309 (October 22) fixes sandbox gaps, including sandboxed commands being able to modify the `--mcp-config` file. Update to 2.1.309 or later for those fixes. Per the [changelog](https://code.claude.com/docs/en/changelog), since 2.1.305 an allowlist no longer filters `managed-mcp.json` stdio servers that use `${VAR}` only in `env`, so list those in `deniedMcpServers`.
+
+Codex CLI 0.164.0 (October 23) masks credentials during supported remote Bash commands, and 0.165.0 (October 27) closes a marketplace URL validation gap that could let Git connect to a different host. Per the [changelog](https://learn.chatgpt.com/docs/changelog), 0.165.0 also enables memory v2 by default for fresh profiles, so upgrade knowing a new profile now remembers.

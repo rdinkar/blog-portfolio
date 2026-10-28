@@ -1,0 +1,61 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#ffffff" fill-opacity="0.05"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff5a5f" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ff5a5f" stop-opacity="0"/>
+    </radialGradient>
+    <g id="key">
+      <circle cx="0" cy="0" r="7" fill="none" stroke="#ff5a5f" stroke-width="2.5"/>
+      <path d="M7 0 H24 M18 0 V6 M23 0 V5" fill="none" stroke="#ff5a5f" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <rect width="1200" height="630" fill="#1a1a2e"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+  <circle cx="800" cy="190" r="190" fill="url(#glow)"/>
+
+  <!-- Title -->
+  <g font-family="Inter, -apple-system, sans-serif" fill="#f3f1ec" font-weight="700" font-size="48" letter-spacing="-1">
+    <text x="80" y="220">The LiteLLM backdoor</text>
+    <text x="80" y="282">went after your</text>
+    <text x="80" y="344">Claude Code and</text>
+    <text x="80" y="406">Cursor keys</text>
+  </g>
+  <rect x="80" y="446" width="56" height="4" fill="#ff5a5f"/>
+  <text x="80" y="494" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#ff5a5f">3 checks to run before Friday</text>
+
+  <!-- Compromised package -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <rect x="700" y="130" width="210" height="104" rx="10" fill="#22223a" stroke="#4a4a6a" stroke-width="1.5"/>
+    <text x="722" y="172" font-size="18" fill="#f3f1ec">litellm</text>
+    <text x="722" y="200" font-size="16" fill="#9a98b0">==1.107.0</text>
+    <rect x="830" y="116" width="96" height="28" rx="6" fill="#ff5a5f"/>
+    <text x="878" y="135" font-size="14" fill="#1a1a2e" text-anchor="middle" font-weight="700">cook.pth</text>
+
+    <!-- Reaching paths -->
+    <g fill="none" stroke="#ff5a5f" stroke-width="2" stroke-dasharray="5 7" stroke-linecap="round">
+      <path d="M760 234 C760 300 820 317 900 317"/>
+      <path d="M760 234 C760 360 800 397 900 397"/>
+      <path d="M760 234 C760 430 790 477 900 477"/>
+    </g>
+    <circle cx="760" cy="234" r="4" fill="#ff5a5f"/>
+
+    <!-- Targeted configs -->
+    <g font-size="17" fill="#f3f1ec">
+      <rect x="900" y="290" width="220" height="54" rx="8" fill="#22223a" stroke="#4a4a6a" stroke-width="1.5"/>
+      <text x="922" y="323">~/.claude</text>
+      <use href="#key" x="1078" y="317"/>
+
+      <rect x="900" y="370" width="220" height="54" rx="8" fill="#22223a" stroke="#4a4a6a" stroke-width="1.5"/>
+      <text x="922" y="403">~/.cursor</text>
+      <use href="#key" x="1078" y="397"/>
+
+      <rect x="900" y="450" width="220" height="54" rx="8" fill="#22223a" stroke="#4a4a6a" stroke-width="1.5"/>
+      <text x="922" y="483">mcp.json</text>
+      <use href="#key" x="1078" y="477"/>
+    </g>
+  </g>
+</svg>
